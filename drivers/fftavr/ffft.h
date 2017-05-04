@@ -22,7 +22,7 @@ void fft_execute (complex_t *);
 void fft_output (const complex_t *, uint16_t *);
 int16_t fmuls_f (int16_t, int16_t);
 
-extern const PROGMEM tbl_window[];
+extern const int tbl_window[];
 
 
 
