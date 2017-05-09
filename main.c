@@ -1,19 +1,23 @@
 
 #define F_CPU       (16000000UL)
+#define BAUD 38400
 
+/* includes */
 #include <avr/io.h>
 #include <avr/sleep.h>
 #include <avr/interrupt.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-
+#include <util/setbaud.h>
 
 #include <libglcd/glcd.h>
 #include <libglcd/font.h>
 #include <libglcd/Standard5x7.h>
 #include <libmemstat/memstat.h>
 #include <fftavr/ffft.h>
+#include <libserialnet/serialnet.h>
+#include <libserialnet/util.h>
 
 #ifndef NULL
 #define NULL    ((void *) 0)
@@ -29,20 +33,21 @@
 
 /* prototypes */
 static void init(void);
+static void zigBeeCB(uint16_t src_addr, const char *data, uint8_t data_length, uint8_t broadcast);
+
 
 /* constants */
-
 #define ADC_MODE_RPM 1
 #define ADC_MODE_SAMPLE 2
 #define ADC_MODE_START_FFT 4
 
 #define TIMER1_COUNTER_TOP_PWM 640
-//#define TIMER1_COUNTER_TOP_PWM 2750
-//#define TIMER1_COUNTER_TOP_PWM 1375
-#define MAX_RPM 3400
+//#define TIMER1_COUNTER_TOP_PWM 2950
+//#define TIMER1_COUNTER_TOP_PWM 1475
+#define MAX_RPM 3600
 #define TIMER3_COUNTER_TOP_A 250
-#define TIMER3_COUNTER_TOP_B 300
-//#define TIMER5_COUNTER_TOP 5000
+#define TIMER3_COUNTER_TOP_B 40000
+#define TIMER5_COUNTER_TOP 25000
 
 #define ISR_ADC_FC 1 
 #define ISR_ADC_SAMPLING 2
@@ -50,6 +55,7 @@ static void init(void);
 #define ISR_FFT 8
 #define ISR_SWITCH_GLCD 16
 #define ISR_NOISE_REDUCTION 32
+#define ISR_REFRESH_ZIGBEE 64
 
 #define GLCD_DISPLAY_RPM 1
 #define GLCD_DISPLAY_FFT 2
@@ -62,11 +68,19 @@ static void init(void);
 #define PID_I_SHARE 5
 #define PID_D_SHARE 5
 
+#define SERIALNET_ROLE 2
+#define SERIALNET_ADDR 65535
+
 /* variables */
+static volatile uint8_t median=0;
 static volatile uint8_t median_count =0;
 static volatile uint8_t median_array[5] = {0,0,0,0,0};
 static volatile uint8_t source_mode=0;
 static volatile uint8_t adc_mode=0;
+static volatile uint16_t set_rpm  =0;
+
+static volatile uint16_t zigbee_address_master=0xFFFF;
+static volatile uint16_t zigbee_rpm=0;
 
 static volatile uint8_t isr_flags=0;
 static volatile uint16_t measured_rpm=0;
@@ -78,10 +92,9 @@ static volatile uint8_t fft_counter=0;
 
 int main(void)
 {
-    uint8_t median=0;
-    uint16_t set_rpm  =0;
     uint8_t displayMode=GLCD_DISPLAY_RPM;
     int16_t error_priveous=0;
+    uint16_t sum_up=0;
     
     /* init interrupts and ports */
     init();
@@ -114,12 +127,11 @@ int main(void)
                 }
             }
             if(median != median_temp[2]){
-                if(median > 5){
+                
+                if(source_mode == MODE_USE_ADC){
                     OCR1B = median_temp[2]*2.5;
-                }else{
-                    OCR1B=5;
+                    set_rpm = 10.7843*median_temp[2]+650;
                 }
-                set_rpm = 10.7843*median_temp[2]+650;
                 median = median_temp[2];
             }
             
@@ -252,13 +264,9 @@ int main(void)
             //get result of fft
             fft_output(fft_buffter, fft_spectrum);
             
-            adc_mode = ADC_MODE_RPM;
-            TIMSK3|= 1<<OCIE3A;
-            
-            /*
             uint16_t max_specs[8] = {fft_spectrum[2],fft_spectrum[3],fft_spectrum[4],fft_spectrum[5],fft_spectrum[6],fft_spectrum[7],fft_spectrum[7],fft_spectrum[9]};
-            uint16_t sum_up=0;
-            
+            //uint16_t sum_up=0;
+            sum_up=0;
             for(uint8_t i=10; i<FFT_N/2; i++){
                 uint16_t min =max_specs[0];
                 uint8_t index_min=0;
@@ -279,22 +287,21 @@ int main(void)
             }
             
 
-            if((sum_up>>4)  > 400+0.048828125*measured_rpm){
+            if((sum_up>>5)  > 400+0.048828125*measured_rpm){
                 
-                PORTC = ~PORTC;
+                PORTB |=0x08;
                 
                 if(source_mode == MODE_NOISE_REDUCTION){
                     set_rpm-=(set_rpm /10);
                 }else{
-                    set_rpm = 1500;
+                    
                 }
-                
+                set_rpm = set_rpm/2;
                 source_mode = MODE_NOISE_REDUCTION;
                 
-            }else if(source_mode == MODE_NOISE_REDUCTION){
-                set_rpm+=(set_rpm /20);
             }
-            */
+            
+            
             if((displayMode & GLCD_DISPLAY_FFT) == GLCD_DISPLAY_FFT){
                 glcdFillScreen(GLCD_CLEAR);
                 
@@ -314,7 +321,18 @@ int main(void)
                     glcdFillRect(top, bottom, &glcdSetPixel);
                 }   
             }
+            
+            adc_mode = ADC_MODE_RPM;
+            TIMSK3|= 1<<OCIE3A;
+            
         }   
+        
+        if((isr_flags & ISR_REFRESH_ZIGBEE) == ISR_REFRESH_ZIGBEE){
+            serialnet_dispatch();
+            PORTC = serialnet_get_state();
+            
+            isr_flags &= ~(ISR_REFRESH_ZIGBEE);
+        }
         
     }
     return 0;
@@ -351,17 +369,22 @@ static void init(void) {
     ICR1 = TIMER1_COUNTER_TOP_PWM;
     
     /* Set up ADC */
+    ADMUX  |= 1<< ADLAR;
     ADCSRA |=  1<<ADEN | 1 << ADIE;
 
     /* Setup Timer 3 for Sampling and FFT*/
     TCCR3B |= 1<<WGM32 | 1<<CS31;// | 1<<CS30;
     OCR3A = TIMER3_COUNTER_TOP_A;
-    OCR3B = TIMER3_COUNTER_TOP_B;
     TIMSK3|= 1<<OCIE3A;
     
     /* Set up Timer4 for Input capture */
     TCCR4B|= 1<<ICNC4 | 1<<CS42;// | 1<< ICES4;
     TIMSK4|= 1<<ICIE4;
+    
+    /* Setup Timer 3 for Sampling and FFT*/
+    TCCR5B |= 1<<WGM52 | 1<<CS51 | 1<<CS50;
+    OCR5A = TIMER5_COUNTER_TOP;
+    TIMSK5|= 1<<OCIE5A;
     
     /* Set up GLCD */    
     glcdInit();
@@ -371,16 +394,52 @@ static void init(void) {
     EICRA |= 1 << ISC01| 1 << ISC11;
     EIMSK |= 1 << INT0 | 1 << INT1;
     
+    /* Configure Serialnet */
+    uint8_t mac[8] = { 9, 8, 1, 5, 2, 5, 1 ,0};
+    serialnet_init(zigBeeCB, 2, 0x1294, mac);
+    serialnet_dispatch();
+    PORTC = serialnet_get_state();
+    
     /* set ADC Mode */
     adc_mode = ADC_MODE_RPM;
+    source_mode = MODE_USE_ADC;
     
 }
+
+static void zigBeeCB(uint16_t src_addr, const char *data, uint8_t data_length, uint8_t broadcast){
+    //do OP Shit
+    zigbee_address_master = src_addr;
+    
+    if(strncmp("SETRPM:", data, 7)==0){
+        PORTB |= 0x01;
+        
+        zigbee_rpm = atoi(&data[7]);
+        set_rpm = zigbee_rpm;
+        source_mode = MODE_USE_ZIGBEE;
+
+    }else if(strncmp("RESETALERT", data, 9)==0){
+        PORTB |= 0x02;
+        source_mode = MODE_USE_ZIGBEE;
+        set_rpm = zigbee_rpm;
+        
+    }else if(strncmp("RESETRPM", data, 8)==0){
+        PORTB |= 0x04;
+        
+        source_mode = MODE_USE_ADC;
+        OCR1B = median*2.5;
+        set_rpm = 10.7843*median+650;
+    }
+    
+    serialnet_clear_state(SERIALNET_GOT_DATA);
+}
+
+
 
 /* interrupts */
 ISR(ADC_vect)           
 {   
     if(adc_mode == ADC_MODE_RPM){
-        median_array[median_count] = ADCW >> 2;
+        median_array[median_count] = ADCH;
         median_count = (median_count +1)%5;
         
         if(median_count ==0){
@@ -389,7 +448,7 @@ ISR(ADC_vect)
         }
         isr_flags |= ISR_ADC_FC;
     }else if(adc_mode == ADC_MODE_SAMPLE){
-        fft_capture[fft_counter] = ADCW;
+        fft_capture[fft_counter] = ADCW- 32768;
         fft_counter = (fft_counter +1)%128;
         if(fft_counter ==0){
             adc_mode = ADC_MODE_START_FFT;
@@ -422,6 +481,11 @@ ISR(TIMER3_COMPA_vect)
 
 }
 
+ISR(TIMER5_COMPA_vect)
+{ 
+    isr_flags |= ISR_REFRESH_ZIGBEE;
+}
+    
 ISR(TIMER4_CAPT_vect)
 {    
     isr_flags |= ISR_INPUT_CAPTURE;    

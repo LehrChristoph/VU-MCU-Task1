@@ -8,7 +8,7 @@
 
 FILENAME    = main
 OBJECTS     = main.o drivers/fftavr/ffft.o 
-LIBOBJECTS  = drivers/libglcd/libglcd.a drivers/libmemstat/libmemstat.a
+LIBOBJECTS  = drivers/libglcd/libglcd.a drivers/libserialnet/libserialnet.a
 MCU         = atmega1280
 
 CCLD        = avr-gcc
@@ -23,7 +23,7 @@ PRFLAGS     = -m$(MCU)
 all: $(FILENAME).elf
 
 $(FILENAME).elf: $(OBJECTS) $(LIBOBJECTS)
-	$(CCLD) $(LDFLAGS) -Ldrivers -Ldrivers/libglcd -lglcd  -Ldrivers/avrfft -Ldrivers/libmemstat -lmemstat -o $@ $(OBJECTS) $(LIBOBJECTS)
+	$(CCLD) $(LDFLAGS) -Ldrivers -Ldrivers/libglcd -lglcd  -Ldrivers/avrfft -Ldrivers/libserialnet -lserialnet -o $@ $(OBJECTS) $(LIBOBJECTS)
 
 %.o: %.c
 	$(CCLD) $(CCFLAGS)  -Idrivers -c -o $@ $<
