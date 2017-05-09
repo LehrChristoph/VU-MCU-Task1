@@ -8,7 +8,7 @@
 
 FILENAME    = main
 OBJECTS     = main.o drivers/fftavr/ffft.o 
-LIBOBJECTS  = drivers/libglcd/glcd.a drivers/libmemstat/memstat.a
+LIBOBJECTS  = drivers/libglcd/libglcd.a drivers/libmemstat/libmemstat.a
 MCU         = atmega1280
 
 CCLD        = avr-gcc

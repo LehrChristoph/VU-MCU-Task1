@@ -29,7 +29,6 @@
 
 /* prototypes */
 static void init(void);
-static uint8_t calc_median(uint8_t *);
 
 /* constants */
 
@@ -38,15 +37,19 @@ static uint8_t calc_median(uint8_t *);
 #define ADC_MODE_START_FFT 4
 
 #define TIMER1_COUNTER_TOP_PWM 640
-#define TIMER3_COUNTER_TOP_A 125
-#define TIMER3_COUNTER_TOP_B 5000
+//#define TIMER1_COUNTER_TOP_PWM 2750
+//#define TIMER1_COUNTER_TOP_PWM 1375
+#define MAX_RPM 3400
+#define TIMER3_COUNTER_TOP_A 250
+#define TIMER3_COUNTER_TOP_B 300
 //#define TIMER5_COUNTER_TOP 5000
 
 #define ISR_ADC_FC 1 
-#define ISR_INPUT_CAPTURE 2
-#define ISR_FFT 4
-#define ISR_SWITCH_GLCD 8
-#define ISR_NOISE_REDUCTION 16
+#define ISR_ADC_SAMPLING 2
+#define ISR_INPUT_CAPTURE 4
+#define ISR_FFT 8
+#define ISR_SWITCH_GLCD 16
+#define ISR_NOISE_REDUCTION 32
 
 #define GLCD_DISPLAY_RPM 1
 #define GLCD_DISPLAY_FFT 2
@@ -55,9 +58,15 @@ static uint8_t calc_median(uint8_t *);
 #define MODE_USE_ZIGBEE 2
 #define MODE_NOISE_REDUCTION 4
 
+#define PID_P_SHARE 5
+#define PID_I_SHARE 5
+#define PID_D_SHARE 5
+
 /* variables */
+static volatile uint8_t median_count =0;
 static volatile uint8_t median_array[5] = {0,0,0,0,0};
 static volatile uint8_t source_mode=0;
+static volatile uint8_t adc_mode=0;
 
 static volatile uint8_t isr_flags=0;
 static volatile uint16_t measured_rpm=0;
@@ -69,14 +78,10 @@ static volatile uint8_t fft_counter=0;
 
 int main(void)
 {
-    uint8_t adc_mode=ADC_MODE_RPM;
+    uint8_t median=0;
     uint16_t set_rpm  =0;
-    uint8_t counter =0;
-    uint8_t median_count =0;
-    uint8_t median =0;
-    uint8_t median_array[5] = {0,0,0,0,0};
-    
     uint8_t displayMode=GLCD_DISPLAY_RPM;
+    int16_t error_priveous=0;
     
     /* init interrupts and ports */
     init();
@@ -96,39 +101,28 @@ int main(void)
         if((isr_flags & ISR_ADC_FC) == ISR_ADC_FC){
             isr_flags &= ~(ISR_ADC_FC);
             //get value from Potentiometer
-            if(adc_mode ==ADC_MODE_RPM){
-                
-                median_array[median_count] = ADCH;
-                //if new adc value equal median, no new calculation necessary
-                if(median_array[median_count] != median){
-                    uint8_t median_temp = calc_median(median_array);
-                    
-                    if(median != median_temp){
-                        median = median_temp;
-                        if(source_mode ==MODE_USE_ADC){
-                            OCR1B = median *2.4;
-                        }
+            uint8_t median_temp[5] = { median_array[0], median_array[1], median_array[2], median_array[3], median_array[4]};
+            
+            uint8_t i, j;
+            for(i=0; i<5; i++) {
+                for(j=0; j<(5-i); j++) {
+                    if(median_temp[j] > median_temp[j+1]) {
+                        uint8_t temp = median_temp[j];
+                        median_temp[j] = median_temp[j+1];
+                        median_temp[j+1] = temp;
                     }
-                    
-                    set_rpm = 10.7843*median+650;
-                }
-                median_count=(median_count+1)%5;
-                counter++;
-
-                adc_mode =ADC_MODE_SAMPLE;  
-                ADMUX |= (1<< MUX2 | 1<< MUX1 | 1 <<MUX0) ;
-                
-            //Sampling for FFT
-            }else if(adc_mode == ADC_MODE_SAMPLE){
-                
-                fft_capture[fft_counter] = ADCW >> 6;
-                fft_counter= (fft_counter +1)%128;
-                
-                if(fft_counter %2==0){
-                    adc_mode = ADC_MODE_RPM;
-                    ADMUX &= ~(1<< MUX2 | 1<< MUX1 | 1 <<MUX0) ;
                 }
             }
+            if(median != median_temp[2]){
+                if(median > 5){
+                    OCR1B = median_temp[2]*2.5;
+                }else{
+                    OCR1B=5;
+                }
+                set_rpm = 10.7843*median_temp[2]+650;
+                median = median_temp[2];
+            }
+            
         }
         
         if((isr_flags & ISR_SWITCH_GLCD) == ISR_SWITCH_GLCD){
@@ -152,49 +146,63 @@ int main(void)
         if((isr_flags & ISR_INPUT_CAPTURE) == ISR_INPUT_CAPTURE){
             
             isr_flags &= ~(ISR_INPUT_CAPTURE);
-            
+                        
+            measured_rpm = 15 / (ICR4 *0.000008);
+                
             if(set_rpm > measured_rpm){
                 
                 uint16_t variance = set_rpm - measured_rpm;
                 uint8_t compensation =0;
                 
                 if(variance > 100){
-                    compensation =25;
-                } else if(variance >50 ){
                     compensation =10;
-                } else if(variance >20 ){
+                } else if(variance >50 ){
                     compensation =5;
+                } else if(variance >20 ){
+                    compensation =2;
                 } else{
                     compensation =1;
                 }
                 
-                if(OCR1B + compensation < TIMER1_COUNTER_TOP_PWM){
+                if((OCR1B + compensation )< TIMER1_COUNTER_TOP_PWM){
                     OCR1B+=compensation;
                 }else{
                     OCR1B = TIMER1_COUNTER_TOP_PWM;
                 }
             }
             else if(set_rpm < measured_rpm) {
-                
+
                 uint16_t variance = measured_rpm-set_rpm;
                 uint8_t compensation =0;
                 
                 if(variance > 100){
-                    compensation =25;
-                } else if(variance >50 ){
                     compensation =10;
-                } else if(variance >20 ){
+                } else if(variance >50 ){
                     compensation =5;
+                } else if(variance >20 ){
+                    compensation =2;
                 } else{
                     compensation =1;
                 }
                 
-                if(OCR1B - compensation >=1){
+                if(OCR1B > compensation){
                     OCR1B-=compensation;
                 }else{
                     OCR1B =0;
                 }
             }
+            
+            /*
+            int16_t error= (int16_t)set_rpm - (int16_t)measured_rpm;
+            int16_t p_share=PID_P_SHARE * error;
+            int16_t i_share=PID_I_SHARE * error_priveous;
+            int16_t d_share=PID_D_SHARE * (error - error_priveous);
+            error_priveous = error;
+            //PID
+            int16_t pid = p_share + i_share + d_share;
+            
+            OCR1B += pid *(TIMER1_COUNTER_TOP_PWM/MAX_RPM);
+            */
             
             if(displayMode == GLCD_DISPLAY_RPM){
                 
@@ -237,6 +245,17 @@ int main(void)
 
             isr_flags &= ~(ISR_FFT);
             
+            //input for fft
+            fft_input(fft_capture, fft_buffter);
+            //start fft
+            fft_execute(fft_buffter);
+            //get result of fft
+            fft_output(fft_buffter, fft_spectrum);
+            
+            adc_mode = ADC_MODE_RPM;
+            TIMSK3|= 1<<OCIE3A;
+            
+            /*
             uint16_t max_specs[8] = {fft_spectrum[2],fft_spectrum[3],fft_spectrum[4],fft_spectrum[5],fft_spectrum[6],fft_spectrum[7],fft_spectrum[7],fft_spectrum[9]};
             uint16_t sum_up=0;
             
@@ -259,7 +278,10 @@ int main(void)
                 sum_up += max_specs[i];
             }
             
-            if(sum_up > 6400+0.78125*measured_rpm){
+
+            if((sum_up>>4)  > 400+0.048828125*measured_rpm){
+                
+                PORTC = ~PORTC;
                 
                 if(source_mode == MODE_NOISE_REDUCTION){
                     set_rpm-=(set_rpm /10);
@@ -272,7 +294,7 @@ int main(void)
             }else if(source_mode == MODE_NOISE_REDUCTION){
                 set_rpm+=(set_rpm /20);
             }
-
+            */
             if((displayMode & GLCD_DISPLAY_FFT) == GLCD_DISPLAY_FFT){
                 glcdFillScreen(GLCD_CLEAR);
                 
@@ -329,93 +351,82 @@ static void init(void) {
     ICR1 = TIMER1_COUNTER_TOP_PWM;
     
     /* Set up ADC */
-    ADMUX |=  1<<ADLAR;
     ADCSRA |=  1<<ADEN | 1 << ADIE;
 
     /* Setup Timer 3 for Sampling and FFT*/
     TCCR3B |= 1<<WGM32 | 1<<CS31;// | 1<<CS30;
     OCR3A = TIMER3_COUNTER_TOP_A;
-    OCR3A = TIMER3_COUNTER_TOP_B;
-    TIMSK3|= 1<<OCIE3A | 1<<OCIE3B;
+    OCR3B = TIMER3_COUNTER_TOP_B;
+    TIMSK3|= 1<<OCIE3A;
     
     /* Set up Timer4 for Input capture */
     TCCR4B|= 1<<ICNC4 | 1<<CS42;// | 1<< ICES4;
     TIMSK4|= 1<<ICIE4;
-    
-    /* Set up Timer4 for Input capture */
-    /*TCCR5B|= 1<<WGM52 | 1<<CS51 | 1<<CS50;
-    OCR5A = TIMER5_COUNTER_TOP;
-    TIMSK5|= 1<<OCIE5A;*/
     
     /* Set up GLCD */    
     glcdInit();
     glcdFillScreen(GLCD_CLEAR);
     
     /* external interrupt */
-    EICRA |= 1 << ISC01;
-    EIMSK |= 1 << INT0;
+    EICRA |= 1 << ISC01| 1 << ISC11;
+    EIMSK |= 1 << INT0 | 1 << INT1;
     
-}
-
-static uint8_t calc_median(uint8_t * median_array){
-    uint8_t median_temp[5] = { median_array[0], median_array[1], median_array[2], median_array[3], median_array[4]};
+    /* set ADC Mode */
+    adc_mode = ADC_MODE_RPM;
     
-    uint8_t i, j;
-    for(i=0; i<5; i++) {
-        for(j=0; j<(5-i); j++) {
-            if(median_temp[j] > median_temp[j+1]) {
-                uint8_t temp = median_temp[j];
-                median_temp[j] = median_temp[j+1];
-                median_temp[j+1] = temp;
-            }
-        }
-    }
-    return median_temp[2];
 }
 
 /* interrupts */
 ISR(ADC_vect)           
 {   
-    isr_flags |= ISR_ADC_FC;
+    if(adc_mode == ADC_MODE_RPM){
+        median_array[median_count] = ADCW >> 2;
+        median_count = (median_count +1)%5;
+        
+        if(median_count ==0){
+            adc_mode = ADC_MODE_SAMPLE;
+            
+        }
+        isr_flags |= ISR_ADC_FC;
+    }else if(adc_mode == ADC_MODE_SAMPLE){
+        fft_capture[fft_counter] = ADCW;
+        fft_counter = (fft_counter +1)%128;
+        if(fft_counter ==0){
+            adc_mode = ADC_MODE_START_FFT;
+            isr_flags |= ISR_FFT;
+            TIMSK3 &= ~(1<<OCIE3A);
+            sleep_enable();
+        }
+    }
+    
 }
 
 
 ISR(TIMER3_COMPA_vect)
-{       
-    TCNT3=0;
-    ADCSRA |= 1 <<ADSC;
-}
-
-ISR(TIMER3_COMPB_vect, ISR_NOBLOCK) /* non blocking adc interrupt */
 {   
-    //input for fft
-    fft_input(fft_capture, fft_buffter);
-    //start fft
-    fft_execute(fft_buffter);
-    //get result of fft
-    fft_output(fft_buffter, fft_spectrum);
     
-    isr_flags |= ISR_FFT;
+    if(adc_mode == ADC_MODE_RPM){
+        if(median_count ==0){
+            ADMUX &= ~(1<< MUX2 | 1<< MUX1 | 1 <<MUX0) ;
+        }
+    }else if(adc_mode == ADC_MODE_SAMPLE){
+        if(fft_counter ==0){
+            ADMUX |= (1<< MUX2 | 1<< MUX1 | 1 <<MUX0) ;
+            sleep_disable();
+        }
+    }else{
+        return;
+    }
+    
+    ADCSRA |= 1 <<ADSC;
+
 }
 
 ISR(TIMER4_CAPT_vect)
 {    
     isr_flags |= ISR_INPUT_CAPTURE;    
-    measured_rpm = 15 / (ICR4 *0.000008);
     TCNT4=0;
 }
-/*
-ISR(TIMER5_COMPA_vect, ISR_NOBLOCK)
-{   
-    //input for fft
-    fft_input(fft_capture, fft_buffter);
-    //start fft
-    fft_execute(fft_buffter);
-    //get result of fft
-    fft_output(fft_buffter, fft_spectrum);
-    
-    isr_flags |= ISR_FFT;
-}*/
 
 ISR(INT0_vect){
     isr_flags |= ISR_SWITCH_GLCD;
