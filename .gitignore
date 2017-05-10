@@ -2,3 +2,5 @@
 *.o
 
 manuals/
+
+modules/controller/pid\.s
