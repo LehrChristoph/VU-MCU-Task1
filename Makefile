@@ -7,7 +7,7 @@
 #
 
 FILENAME    = main
-OBJECTS     = main.o drivers/fftavr/ffft.o 
+OBJECTS     = main.o drivers/fftavr/ffft.o modules/controller/pid.o
 LIBOBJECTS  = drivers/libglcd/libglcd.a drivers/libserialnet/libserialnet.a
 MCU         = atmega1280
 
@@ -23,10 +23,10 @@ PRFLAGS     = -m$(MCU)
 all: $(FILENAME).elf
 
 $(FILENAME).elf: $(OBJECTS) $(LIBOBJECTS)
-	$(CCLD) $(LDFLAGS) -Ldrivers -Ldrivers/libglcd -lglcd  -Ldrivers/avrfft -Ldrivers/libserialnet -lserialnet -o $@ $(OBJECTS) $(LIBOBJECTS)
+	$(CCLD) $(LDFLAGS) -Ldrivers -Ldrivers/libglcd -lglcd  -Ldrivers/avrfft -Ldrivers/libserialnet -lserialnet -Lmodules/controller -o $@ $(OBJECTS) $(LIBOBJECTS)
 
 %.o: %.c
-	$(CCLD) $(CCFLAGS)  -Idrivers -c -o $@ $<
+	$(CCLD) $(CCFLAGS) -S -Idrivers -Imodules -c -o $@ $<
 
 %.o : %.S
 	$(CCLD) -c $(ASFLAGS) $< -o $@

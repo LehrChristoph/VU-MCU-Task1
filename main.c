@@ -69,10 +69,6 @@ static void zigBeeCB(uint16_t src_addr, const char *data, uint8_t data_length, u
 #define MODE_USE_ZIGBEE 2
 #define MODE_NOISE_REDUCTION 4
 
-#define PID_P_SHARE 1
-#define PID_I_SHARE 0
-#define PID_D_SHARE 0
-
 #define SERIALNET_ROLE 2
 #define SERIALNET_ADDR 65535
 
