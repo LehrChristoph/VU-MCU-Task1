@@ -19,6 +19,8 @@
 #include <libserialnet/serialnet.h>
 #include <libserialnet/util.h>
 
+#include <controller/pid.h>
+
 #ifndef NULL
 #define NULL    ((void *) 0)
 #endif
@@ -67,9 +69,9 @@ static void zigBeeCB(uint16_t src_addr, const char *data, uint8_t data_length, u
 #define MODE_USE_ZIGBEE 2
 #define MODE_NOISE_REDUCTION 4
 
-#define PID_P_SHARE 100
-#define PID_I_SHARE 5
-#define PID_D_SHARE 0.0004
+#define PID_P_SHARE 1
+#define PID_I_SHARE 0
+#define PID_D_SHARE 0
 
 #define SERIALNET_ROLE 2
 #define SERIALNET_ADDR 65535
@@ -99,9 +101,15 @@ int main(void)
     uint8_t displayMode=GLCD_DISPLAY_RPM;
     int16_t error_priveous=0;
     uint16_t sum_up=0;
+    uint8_t input=1;
+    int16_t sumError;
+    struct PID_DATA pidData;
     
     /* init interrupts and ports */
     init();
+    
+    pid_Init(PID_P_SHARE * SCALING_FACTOR, PID_I_SHARE * SCALING_FACTOR, PID_D_SHARE * SCALING_FACTOR, &pidData);
+
     
     adc_mode = ADC_MODE_RPM;
     
@@ -134,7 +142,7 @@ int main(void)
                 
                 if(source_mode == MODE_USE_ADC){
                     OCR1B = median_temp[2]*(TIMER1_COUNTER_TOP_PWM/255);
-                    set_rpm = 10.7843*median_temp[2]+650;
+                    set_rpm = 10.7843*((float)median_temp[2])+650;
                 }
                 median = median_temp[2];
             }
@@ -158,7 +166,7 @@ int main(void)
             source_mode = MODE_USE_ADC;
             
             OCR1B = median*(TIMER1_COUNTER_TOP_PWM/255);
-            set_rpm = 10.7843*median+650;
+            set_rpm = 10.784313725*((float)median)+650;
             
             isr_flags &= ~(ISR_NOISE_REDUCTION);
         }
@@ -219,6 +227,25 @@ int main(void)
                     OCR1B =0;
                 }
             }*/
+            /*
+            int8_t errorL= ((int16_t)set_rpm - (int16_t)measured_rpm)&128;
+            int8_t errorH= ((int16_t)set_rpm - (int16_t)measured_rpm)>> 8;
+            
+            sumError = (int16_t)set_rpm - (int16_t)measured_rpm;
+            
+            int8_t error_priveousL = error_priveous &128;
+            int8_t error_priveousH = error_priveous >> 8;
+            
+            
+            asm volatile(
+                "mov __tmp_reg__, %2"       "\n\t"
+                "rol __tmp_reg__ "          "\n\t"
+                "out %1, __tmp_reg__"       "\n\t"
+                "mov %0,__tmp_reg__"        "\n\t"
+                : "=r" (input)
+                : "I" (_SFR_IO_ADDR(PORTC)), "r" (input)
+            );
+            
             
             
             int16_t error= (int16_t)set_rpm - (int16_t)measured_rpm;
@@ -231,7 +258,17 @@ int main(void)
             
             OCR1B += pid *(TIMER1_COUNTER_TOP_PWM/MAX_RPM);
             
+            */
             
+            int16_t pid = pid_Controller_c(set_rpm, measured_rpm, &pidData);
+            
+            if(abs(pid) > OCR1B){
+                OCR1B =0;
+            }else if(abs(pid) > TIMER1_COUNTER_TOP_PWM){
+                OCR1B = TIMER1_COUNTER_TOP_PWM;
+            }else{
+                OCR1B += pid;// *(TIMER1_COUNTER_TOP_PWM/MAX_RPM);
+            }
         }
         
         if((isr_flags & ISR_FFT) == ISR_FFT){
@@ -310,7 +347,7 @@ int main(void)
         
         if((isr_flags & ISR_REFRESH_ZIGBEE) == ISR_REFRESH_ZIGBEE){
             serialnet_dispatch();
-            PORTC = serialnet_get_state();
+            //PORTC = serialnet_get_state();
             
             isr_flags &= ~(ISR_REFRESH_ZIGBEE);
             
@@ -388,7 +425,7 @@ static void init(void) {
     uint8_t mac[8] = { 9, 8, 1, 5, 2, 5, 1 ,0};
     serialnet_init(zigBeeCB, 2, 0x1294, mac);
     serialnet_dispatch();
-    PORTC = serialnet_get_state();
+    //PORTC = serialnet_get_state();
     
     /* set ADC Mode */
     adc_mode = ADC_MODE_RPM;
@@ -423,7 +460,7 @@ static void zigBeeCB(uint16_t src_addr, const char *data, uint8_t data_length, u
         if(source_mode == MODE_USE_ZIGBEE){
             source_mode = MODE_USE_ADC;
             OCR1B = median*(TIMER1_COUNTER_TOP_PWM/255);
-            set_rpm = 10.7843*median+650;
+            set_rpm = 10.7843*((float)median)+650;
         }
         zigbee_rpm=0;
     }
@@ -438,10 +475,10 @@ static void drawFFT(void){
         xy_point top, bottom;
         
         top.x=i*2;
-        if((fft_spectrum[i]/2)>=63){
+        if((fft_spectrum[i]/128)>=63){
             top.y=0;
         }else{
-            top.y=63-(fft_spectrum[i]/2);
+            top.y=63-(fft_spectrum[i]/128);
         }
         
         bottom.x=i*2+1;
