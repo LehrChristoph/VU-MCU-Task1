@@ -26,7 +26,7 @@ $(FILENAME).elf: $(OBJECTS) $(LIBOBJECTS)
 	$(CCLD) $(LDFLAGS) -Ldrivers -Ldrivers/libglcd -lglcd  -Ldrivers/avrfft -Ldrivers/libserialnet -lserialnet -Lmodules/controller -o $@ $(OBJECTS) $(LIBOBJECTS)
 
 %.o: %.c
-	$(CCLD) $(CCFLAGS) -S -Idrivers -Imodules -c -o $@ $<
+	$(CCLD) $(CCFLAGS) -Idrivers -Imodules -c -o $@ $<
 
 %.o : %.S
 	$(CCLD) -c $(ASFLAGS) $< -o $@

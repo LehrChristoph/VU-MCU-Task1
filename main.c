@@ -1,6 +1,4 @@
-
 #define F_CPU       (16000000UL)
-#define BAUD 38400
 
 /* includes */
 #include <avr/io.h>
@@ -9,7 +7,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include <util/setbaud.h>
 
 #include <libglcd/glcd.h>
 #include <libglcd/font.h>
@@ -95,16 +92,13 @@ static char errorLast[30]="";
 int main(void)
 {
     uint8_t displayMode=GLCD_DISPLAY_RPM;
-    int16_t error_priveous=0;
     uint16_t sum_up=0;
-    uint8_t input=1;
-    int16_t sumError;
     struct PID_DATA pidData;
     
     /* init interrupts and ports */
     init();
     
-    pid_Init(PID_P_SHARE * SCALING_FACTOR, PID_I_SHARE * SCALING_FACTOR, PID_D_SHARE * SCALING_FACTOR, &pidData);
+    pid_Init( &pidData);
 
     
     adc_mode = ADC_MODE_RPM;
@@ -138,7 +132,7 @@ int main(void)
                 
                 if(source_mode == MODE_USE_ADC){
                     OCR1B = median_temp[2]*(TIMER1_COUNTER_TOP_PWM/255);
-                    set_rpm = 10.7843*((float)median_temp[2])+650;
+                    set_rpm = 10.784313725*((float)median_temp[2])+650;
                 }
                 median = median_temp[2];
             }
@@ -163,7 +157,6 @@ int main(void)
             
             OCR1B = median*(TIMER1_COUNTER_TOP_PWM/255);
             set_rpm = 10.784313725*((float)median)+650;
-            
             isr_flags &= ~(ISR_NOISE_REDUCTION);
         }
         
@@ -172,99 +165,7 @@ int main(void)
             isr_flags &= ~(ISR_INPUT_CAPTURE);
                         
             measured_rpm = 15 / (ICR4 *0.000008);
-            
-            if(sum_up > 300 && source_mode == MODE_NOISE_REDUCTION){
-                
-                set_rpm -= (set_rpm/10);
-                if(set_rpm < MIN_RPM){
-                    set_rpm =MIN_RPM;
-                }
-            }
-            /*
-            if(set_rpm > measured_rpm){
-                
-                uint16_t variance = set_rpm - measured_rpm;
-                uint8_t compensation =0;
-                
-                if(variance > 100){
-                    compensation =10;
-                } else if(variance >50 ){
-                    compensation =5;
-                } else if(variance >20 ){
-                    compensation =2;
-                } else{
-                    compensation =1;
-                }
-                
-                if((OCR1B + compensation )< TIMER1_COUNTER_TOP_PWM){
-                    OCR1B+=compensation;
-                }else{
-                    OCR1B = TIMER1_COUNTER_TOP_PWM;
-                }
-            }
-            else if(set_rpm < measured_rpm) {
 
-                uint16_t variance = measured_rpm-set_rpm;
-                uint8_t compensation =0;
-                
-                if(variance > 100){
-                    compensation =10;
-                } else if(variance >50 ){
-                    compensation =5;
-                } else if(variance >20 ){
-                    compensation =2;
-                } else{
-                    compensation =1;
-                }
-                
-                if(OCR1B > compensation){
-                    OCR1B-=compensation;
-                }else{
-                    OCR1B =0;
-                }
-            }*/
-            /*
-            int8_t errorL= ((int16_t)set_rpm - (int16_t)measured_rpm)&128;
-            int8_t errorH= ((int16_t)set_rpm - (int16_t)measured_rpm)>> 8;
-            
-            sumError = (int16_t)set_rpm - (int16_t)measured_rpm;
-            
-            int8_t error_priveousL = error_priveous &128;
-            int8_t error_priveousH = error_priveous >> 8;
-            
-            
-            asm volatile(
-                "mov __tmp_reg__, %2"       "\n\t"
-                "rol __tmp_reg__ "          "\n\t"
-                "out %1, __tmp_reg__"       "\n\t"
-                "mov %0,__tmp_reg__"        "\n\t"
-                : "=r" (input)
-                : "I" (_SFR_IO_ADDR(PORTC)), "r" (input)
-            );
-            
-            
-            
-            int16_t error= (int16_t)set_rpm - (int16_t)measured_rpm;
-            int16_t p_share=PID_P_SHARE * error;
-            int16_t i_share=PID_I_SHARE * error_priveous;
-            int16_t d_share=PID_D_SHARE * (error - error_priveous);
-            error_priveous = error;
-            //PID
-            int16_t pid = p_share + i_share + d_share;
-            
-            OCR1B += pid *(TIMER1_COUNTER_TOP_PWM/MAX_RPM);
-            
-            */
-            
-            int16_t pid = pid_Controller_c(set_rpm, measured_rpm, &pidData);
-            
-            if(abs(pid) > OCR1B){
-                OCR1B =0;
-            }else if(abs(pid) > TIMER1_COUNTER_TOP_PWM){
-                OCR1B = TIMER1_COUNTER_TOP_PWM;
-            }else{
-                OCR1B += pid;// *(TIMER1_COUNTER_TOP_PWM/MAX_RPM);
-            }
         }
         
         if((isr_flags & ISR_FFT) == ISR_FFT){
@@ -306,13 +207,13 @@ int main(void)
 
             if((sum_up>>5)  > 400+0.048828125*measured_rpm && source_mode != MODE_NOISE_REDUCTION){
                 
-                PORTB |=0x08;
-                
                 set_rpm = set_rpm/2;
                 
                 if(set_rpm < MIN_RPM){
                     set_rpm = MIN_RPM;
                 }
+                
+                OCR1B = OCR1B / 2;
                 
                 if(source_mode == MODE_USE_ZIGBEE){
                     uint8_t i=0;
@@ -346,6 +247,30 @@ int main(void)
             //PORTC = serialnet_get_state();
             
             isr_flags &= ~(ISR_REFRESH_ZIGBEE);
+            
+            if(sum_up > 300 && source_mode == MODE_NOISE_REDUCTION){
+                
+                set_rpm -= (set_rpm/10);
+                
+                if(set_rpm < MIN_RPM){
+                    set_rpm =MIN_RPM;
+                    OCR1B = 0;
+                }else{
+                    OCR1B -= (OCR1B/10);
+                }
+                
+            }
+            
+            int16_t pid = pid_Controller_asm(set_rpm, measured_rpm, &pidData);
+            int16_t adjust=pid + OCR1B;
+            
+            if(adjust < 0){
+                OCR1B =0;
+            }else if(adjust > TIMER1_COUNTER_TOP_PWM){
+                OCR1B = TIMER1_COUNTER_TOP_PWM;
+            }else{
+                OCR1B = adjust;
+            }
             
             if((displayMode & GLCD_DISPLAY_FFT) == GLCD_DISPLAY_FFT){
                 drawFFT();
@@ -441,6 +366,7 @@ static void zigBeeCB(uint16_t src_addr, const char *data, uint8_t data_length, u
             zigbee_rpm =0;
         }else{
             set_rpm = zigbee_rpm;
+            OCR1B = set_rpm *0.8;
         }
         
         if(source_mode != MODE_NOISE_REDUCTION){
@@ -456,7 +382,7 @@ static void zigBeeCB(uint16_t src_addr, const char *data, uint8_t data_length, u
         if(source_mode == MODE_USE_ZIGBEE){
             source_mode = MODE_USE_ADC;
             OCR1B = median*(TIMER1_COUNTER_TOP_PWM/255);
-            set_rpm = 10.7843*((float)median)+650;
+            set_rpm = 10.784313725*((float)median)+650;
         }
         zigbee_rpm=0;
     }
@@ -471,10 +397,10 @@ static void drawFFT(void){
         xy_point top, bottom;
         
         top.x=i*2;
-        if((fft_spectrum[i]/128)>=63){
+        if((fft_spectrum[i]/32)>=16){
             top.y=0;
         }else{
-            top.y=63-(fft_spectrum[i]/128);
+            top.y=63-(fft_spectrum[i]/16);
         }
         
         bottom.x=i*2+1;
