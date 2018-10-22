@@ -1,42 +1,44 @@
 #
-# Makefile for the C interrupt demo
+# Microcontroller VU
+#
+# General Makefile of the application template
+#
+# Author: Martin Perner
+#
+# Date:         23.03.2015
+#
+# TU Vienna, Embedded Computing Systems Group
+#
 #
 # Targets:
-#   all         generates flash file
-#   install     downloads elf file to mcu
-#
+#	(default)	help -- lists all possible targets
+#	help		lists all possible targets
+#	protocol	generates an archive for the protocol submission
+#   code        generates an archive for the code submission
 
-FILENAME    = main
-OBJECTS     = main.o drivers/fftavr/ffft.o modules/controller.o modules/glcd.o modules/adc.o modules/serialnet.o
-LIBOBJECTS  = drivers/libglcd/libglcd.a drivers/libserialnet/libserialnet.a
-MCU         = atmega1280
+MATRNR = 01525189
+PROTO_FOLDER = Protocol
+APP_FOLDER = Application
 
-CCLD        = avr-gcc
-ASFLAGS     = -mmcu=$(MCU) -I. -x assembler-with-cpp -Wa,-adhlns=$(<:.S=.lst),-gstabs 
-CCFLAGS     = -mmcu=$(MCU) -Wall -Wstrict-prototypes -Os -frename-registers
-CCFLAGS    += -fshort-enums -fpack-struct -funsigned-char -funsigned-bitfields 
-LDFLAGS     = -mmcu=$(MCU) -Wl,-u,vfprintf,-lprintf_min -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums
+.PHONY: help protocol code clean
 
-PROG        = avrprog2
-PRFLAGS     = -m$(MCU)
+help:
+	@echo -e "\n>>> the following targets are available <<<"
+	@echo -e "\t(default) \t\t list this text"
+	@echo -e "\thelp \t\t list this text"
+	@echo -e "\tprotocol \t generates an archive for the protocol submission"
+	@echo -e "\tcode \t generates an archive for the code submission"
+	@echo -e "\tclean \t\t remove temporary files"
 
-all: $(FILENAME).elf
+protocol:
+	make -C $(PROTO_FOLDER) protocol
+	make -C $(PROTO_FOLDER) cleansmall
+	tar --transform 's,^,$(MATRNR)/,S' -czf protocol_$(MATRNR).tar.gz $(PROTO_FOLDER)/
 
-$(FILENAME).elf: $(OBJECTS) $(LIBOBJECTS)
-	$(CCLD) $(LDFLAGS) -L. -Ldrivers -Ldrivers/libglcd -lglcd  -Ldrivers/avrfft -Ldrivers/libserialnet -lserialnet -Lmodules/controller -o $@ $(OBJECTS) $(LIBOBJECTS)
-
-%.o: %.c
-	$(CCLD) $(CCFLAGS) -I. -Idrivers -Imodules -c -o $@ $<
-
-%.o : %.S
-	$(CCLD) -c $(ASFLAGS) $< -o $@
-	
-install: $(FILENAME).elf
-	$(PROG) $(PRFLAGS) --flash w:$<
-
-verify: $(FILENAME).elf
-	$(PROG) $(PRFLAGS) --flash v:$<
+code:
+	make -C $(APP_FOLDER) clean || exit 0
+	make -C $(PROTO_FOLDER) listing
+	tar --transform 's,^,$(MATRNR)/,S' -czf code_$(MATRNR).tar.gz $(PROTO_FOLDER)/Listing.pdf $(PROTO_FOLDER)/listings.tex $(APP_FOLDER)/
 
 clean:
-	rm -f $(FILENAME).elf $(OBJECTS)
-
+	rm -f protocol_$(MATRNR).tar.gz code_$(MATRNR).tar.gz
