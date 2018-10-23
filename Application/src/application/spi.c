@@ -13,6 +13,11 @@ void spiInit(void)
 {
     SPCR |=  (1 << SPE | 1 << MSTR );
     SPCR &= ~(1 << DORD | 1 << CPOL | 1 << CPHA);
+
+    uint8_t temp = PORTB & 0xF0;
+    PORTB |=  (temp | 1 << PB0 );
+    temp = DDRB & 0xF0;
+    DDRB = (temp | 1 << PB0 | 1 << PB1 | 1 << PB2);
 }
 
 void spiSend(uint8_t data)
