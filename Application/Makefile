@@ -17,8 +17,8 @@ INC_DIR		= ./inc		# includes from external files, e.g. libraries
 SRCS		= $(wildcard $(SRC_DIR)/*.c)
 SRCS	   += $(wildcard $(SRC_DIR)/avr_libs/basics/*.c)
 SRCS	   += $(wildcard $(SRC_DIR)/avr_libs/modules/*.c)
-SRCS	   += $(wildcard $(SRC_DIR)/provided_code/*.c)
-SRCS	   += $(wildcard $(SRC_DIR)/provided_code/wiimote/*.c)
+SRCS	   += $(wildcard $(SRC_DIR)/application/*.c)
+SRCS	   += $(wildcard $(SRC_DIR)/application/wiimote/*.c)
 OBJECTS     = $(SRCS:$(SRC_DIR)%.c=$(OBJ_DIR)%.o)
 LIBOBJECTS  =
 
