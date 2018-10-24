@@ -11,13 +11,13 @@
 #ifndef APPLICATION_SOUND_H_
 #define APPLICATION_SOUND_H_
 
-// set how many block shall be stored in the buffer
-#ifndef SOUND_BLOCK_BUFFER_SIZE
-    #define SOUND_BLOCK_BUFFER_SIZE 2
+// sets how big the ADC ring buffer shall be
+#ifndef SOUND_VOLUME_BUFFER_SIZE
+    #define SOUND_VOLUME_BUFFER_SIZE 5
 #endif
 
-#define SOUND_BUFFER_SIZE SOUND_BLOCK_BUFFER_SIZE*4
-
 void sound_init(void);
+
+inline void sound_add_volume_val(uint8_t) __attribute__((always_inline)); // optimize function
 
 #endif

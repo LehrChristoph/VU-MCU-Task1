@@ -20,7 +20,10 @@ uint8_t sound_buffer[BLOCK_SIZE];
 uint32_t start_address = 0;
 uint32_t current_address = 0;
 uint32_t end_address = 0;
+
 uint8_t volume = 0;
+uint8_t volume_buffer[SOUND_VOLUME_BUFFER_SIZE];
+uint8_t volume_index = 0;
 
 // Tetris
 #define THEME_ADDRESS 6778144
@@ -39,7 +42,6 @@ void sound_init(void)
     spiInit();
     error_t error_code = sdcardInit();
     mp3Init(&sound_send_data);
-    mp3SetVolume(0x40);
 }
 
 void sound_send_data(void)
@@ -48,9 +50,35 @@ void sound_send_data(void)
     QueuedExecuter_add_function_call(&sound_read_data);
 }
 
+void sound_add_volume_val(uint8_t sound_input)
+{
+    volume_buffer[volume_index] = sound_input;
+    if(++volume_index == SOUND_VOLUME_BUFFER_SIZE)
+    {
+        QueuedExecuter_add_function_call(&sound_set_volume);
+        volume_index=0;
+    }
+}
+
 void sound_set_volume(void)
 {
-    mp3SetVolume(volume);
+    for(uint8_t i =1; i < SOUND_VOLUME_BUFFER_SIZE-1; ++i)
+    {
+        for(uint8_t j =0; j < SOUND_VOLUME_BUFFER_SIZE-1; ++j)
+        {
+            if(volume_buffer[j] > volume_buffer[j+1])
+            {
+                unit8_t temp = volume_buffer[j+1];
+                volume_buffer[j+1] = volume_buffer[j];
+                volume_buffer[j] = temp;
+            }
+        }
+    }
+    if(volume_buffer[SOUND_VOLUME_BUFFER_SIZE/2] != volume)
+    {
+        volume = volume_buffer[SOUND_VOLUME_BUFFER_SIZE/2];
+        mp3SetVolume(volume);
+    }
 }
 
 void sound_read_data()
