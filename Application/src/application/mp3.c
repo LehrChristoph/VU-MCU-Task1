@@ -3,6 +3,10 @@
 #include <util/delay.h>
 #include <avr/interrupt.h>
 
+// CLH Adaptions :
+// include own implementation of external intererupts
+#include "avr_libs/basics/PinChangeInterrupts.h"
+
 // internal definitions
 #define mp3CSLow()	MP3_PORT &= ~(1<<MP3_CS)
 #define mp3CSHigh()	MP3_PORT |= (1<<MP3_CS)
@@ -84,9 +88,9 @@ void mp3Init(void (*dataRequestCallback)(void)) {
 
 	sciWrite(VOL, 0x3000);
 
-	// init external INT0
-	EICRA |= (1<<ISC01) | (1<<ISC00);
-	EIMSK |= (1<<INT0);
+	// init external INT0, orig replaced by CLH
+    PinCahngeInterrupts_enable_external_interupt(EXTERNAL_INTERRUPT_ON_RISING_EDGE, EXTERNAL_INTERRUPT_0, dataRequestCallback);
+
 }
 
 void mp3SetVolume(uint8_t vol) {
@@ -126,10 +130,3 @@ void mp3SendMusic(uint8_t *buffer) {
 	}
 	bsyncHigh();
 }
-
-ISR (INT0_vect) {
-	if (dataRequest != NULL) {
-		dataRequest();
-	}
-}
-
