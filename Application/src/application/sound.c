@@ -91,7 +91,7 @@ void sound_read_data()
          current_address = start_address;
      }
 
-     if(mp3Busy == false)
+     if(mp3Busy() == false)
      {
          sound_send_data();
      }
