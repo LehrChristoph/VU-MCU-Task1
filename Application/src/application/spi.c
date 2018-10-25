@@ -45,17 +45,16 @@ uint8_t spiReceive(void)
 }
 void spiSetPrescaler(spi_prescaler_t prescaler)
 {
-    switch prescaler
+    switch (prescaler)
+    {
         case SPI_PRESCALER_128:
-        {
             SPCR |=  (1 << SPR1 | 1 << SPR0);
-            SPSR &= ~(1 << SP2X);
+            SPSR &= ~(1 << SPI2X);
             break;
-        }
     	case SPI_PRESCALER_4:
-        {
             SPCR &= ~(1 << SPR1 | 1 << SPR0);
-            SPSR &= ~(1 << SP2X);
+            SPSR &= ~(1 << SPI2X);
             break;
-        }
+    }
+
 }
