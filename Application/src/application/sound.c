@@ -40,6 +40,7 @@ uint8_t volume_index = 0;
 void sound_init(void)
 {
     spiInit();
+    // TODO: handle errors
     error_t error_code = sdcardInit();
     mp3Init(&sound_send_data);
 }
