@@ -84,6 +84,13 @@ void sound_set_volume(void)
 void sound_read_data()
 {
      error_t error_code = sdcardReadBlock(current_address, sound_buffer);
+
+     // unable to read data, reschedule sd card access
+     if(error_code != SUCCESS)
+     {
+         QueuedExecuter_add_function_call(&sound_read_data);
+     }
+
      current_address+=4;
 
      if( current_address >= end_address)
