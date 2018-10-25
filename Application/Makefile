@@ -32,7 +32,7 @@ MCU         = atmega1280
 CCLD        = avr-gcc
 ASFLAGS     = -mmcu=$(MCU) -I. -x assembler-with-cpp -Wa,-adhlns=$(<:.S=.lst),-gstabs
 CCFLAGS     = -mmcu=$(MCU) -Wall -Wstrict-prototypes -Os -frename-registers
-CCFLAGS    += -fshort-enums -fpack-struct -funsigned-char -funsigned-bitfields
+CCFLAGS    += -fshort-enums -fpack-struct -funsigned-char -funsigned-bitfields -finline-functions
 CCFLAGS    += $(DEFINES:%=-D%) $(INCLUDES:%=-I%)
 LDFLAGS     = -mmcu=$(MCU) -Wl,-u,vfprintf,-lprintf_min -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums
 LDFLGAS    += $(LIBS:%=-L%)
