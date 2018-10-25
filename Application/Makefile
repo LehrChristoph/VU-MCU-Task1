@@ -12,7 +12,7 @@ CLOCK		= 16000000
 SRC_DIR		= ./src
 OBJ_DIR		= ./obj
 INC_DIR		= ./inc
-LIB_DIR		= ./lib
+LIB_DIR		= ./libs
 
 SRCS		= $(wildcard $(SRC_DIR)/*.c)
 SRCS	   += $(wildcard $(SRC_DIR)/avr_libs/basics/*.c)
@@ -23,7 +23,8 @@ OBJECTS     = $(SRCS:$(SRC_DIR)%.c=$(OBJ_DIR)%.o)
 LIBOBJECTS  =
 
 INCLUDES	= $(SRC_DIR) $(SRC_DIR)/avr_libs $(INC_DIR)
-LIBS		= $(OBJ_DIR)/avr_libs
+LIB_DIRS	= $(OBJ_DIR)/avr_libs $(LIB_DIR)
+LIBS 		= glcd
 
 DEFINES		= F_CPU=$(CLOCK)
 
@@ -35,7 +36,6 @@ CCFLAGS     = -mmcu=$(MCU) -Wall -Wstrict-prototypes -Os -frename-registers
 CCFLAGS    += -fshort-enums -fpack-struct -funsigned-char -funsigned-bitfields -finline-functions
 CCFLAGS    += $(DEFINES:%=-D%) $(INCLUDES:%=-I%)
 LDFLAGS     = -mmcu=$(MCU) -Wl,-u,vfprintf,-lprintf_min -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums
-LDFLGAS    += $(LIBS:%=-L%)
 
 PROG        = avrprog2
 PRFLAGS     = -m$(MCU) -d
@@ -43,7 +43,7 @@ PRFLAGS     = -m$(MCU) -d
 all: $(OBJ_DIR) $(FILENAME).elf
 
 $(FILENAME).elf: $(OBJECTS) $(LIBOBJECTS)
-	$(CCLD) $(LDFLAGS) -o $@ $(OBJECTS) $(LIBOBJECTS)
+	$(CCLD) $(LDFLAGS) -o $@ $(OBJECTS) $(LIBOBJECTS) $(LIB_DIRS:%=-L%) $(LIBS:%=-l%)
 
 $(OBJ_DIR)/%.o : $(SRC_DIR)/%.c
 	$(CCLD) $(CCFLAGS) -c -o $@ $<
