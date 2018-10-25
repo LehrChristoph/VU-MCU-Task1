@@ -13,6 +13,7 @@
 #include "avr_libs/basics/Timer1.h"
 #include "avr_libs/modules/rand.h"
 
+#include "application/field.h"
 #include "application/sound.h"
 
 adc_mode_t current_adc_mode = ADC_MODE_VOLUME;
@@ -23,6 +24,7 @@ void game_timer_callback(void);
 void game_init(void)
 {
     sound_init();
+    field_init();
 
     // setup ADC
     ADC_select_channel(ADC_CHANNEL_ADC0);
