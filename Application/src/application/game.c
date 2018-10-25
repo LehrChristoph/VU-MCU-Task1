@@ -4,7 +4,7 @@
  *  Created on: 23 Oct 2018
  *      Author: christoph
  */
- 
+
 #include "application/game.h"
 
 #include <avr/io.h>
@@ -17,7 +17,7 @@
 
 adc_mode_t current_adc_mode = ADC_MODE_VOLUME;
 
-void game_ADC_callback(uint8_t adc_val);
+void game_ADC_callback(uint16_t adc_val);
 void game_timer_callback(void);
 
 void game_init(void)
