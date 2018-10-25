@@ -68,7 +68,7 @@ void sound_set_volume(void)
         {
             if(volume_buffer[j] > volume_buffer[j+1])
             {
-                unit8_t temp = volume_buffer[j+1];
+                uint8_t temp = volume_buffer[j+1];
                 volume_buffer[j+1] = volume_buffer[j];
                 volume_buffer[j] = temp;
             }
@@ -99,21 +99,21 @@ void sound_read_data()
 
 void sound_start_playing_startup(void)
 {
-     current_byteAddress = start_address = STATRTUP_SOUND_ADDRESS;
+     current_address = start_address = STATRTUP_SOUND_ADDRESS;
      end_address = STATRTUP_SOUND_ADDRESS + STATRTUP_SOUND_LENGTH;
      sound_read_data();
 }
 
 void sound_start_playing_theme(void)
 {
-    current_byteAddress = start_address = THEME_ADDRESS;
+    current_address = start_address = THEME_ADDRESS;
     end_address = THEME_ADDRESS + THEME_LENGTH;
     sound_read_data();
 }
 
 void sound_play_game_over(void)
 {
-    current_byteAddress = start_address = GAME_OVER_SOUND_ADDRESS;
+    current_address = start_address = GAME_OVER_SOUND_ADDRESS;
     end_address = GAME_OVER_SOUND_ADDRESS + GAME_OVER_SOUND_LENGH;
     sound_read_data();
 }
