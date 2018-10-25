@@ -7,24 +7,23 @@
 #
 
 FILENAME    = main
-CLOCK		= 1600000
+CLOCK		= 16000000
 
-SRC_DIR		= ./src		# directory where source code is stored
-OBJ_DIR		= ./obj		# directory where object files will be created
-LIB_DIR		= ./libs	# directory where the libraries are stored
-INC_DIR		= ./inc		# includes from external files, e.g. libraries
+SRC_DIR		= ./src
+OBJ_DIR		= ./obj
+INC_DIR		= ./inc
+LIB_DIR		= ./lib
 
 SRCS		= $(wildcard $(SRC_DIR)/*.c)
 SRCS	   += $(wildcard $(SRC_DIR)/avr_libs/basics/*.c)
 SRCS	   += $(wildcard $(SRC_DIR)/avr_libs/modules/*.c)
-SRCS	   += $(wildcard $(SRC_DIR)/provided_code/*.c)
-SRCS	   += $(wildcard $(SRC_DIR)/provided_code/wiimote/*.c)
+SRCS	   += $(wildcard $(SRC_DIR)/application/*.c)
+
 OBJECTS     = $(SRCS:$(SRC_DIR)%.c=$(OBJ_DIR)%.o)
 LIBOBJECTS  =
 
-INCLUDES	= $(INC_DIR) $(SRC_DIR) $(SRC_DIR)/avr_libs $(SRC_DIR)/provided_code
-LIBS		= $(OBJ_DIR)/avr_libs $(OBJ_DIR)/provided_code
-LIBS 	   += $(wildcard $(LIB_DIR)/*.a)
+INCLUDES	= $(SRC_DIR) $(SRC_DIR)/avr_libs $(INC_DIR)
+LIBS		= $(OBJ_DIR)/avr_libs
 
 DEFINES		= F_CPU=$(CLOCK)
 
@@ -33,7 +32,7 @@ MCU         = atmega1280
 CCLD        = avr-gcc
 ASFLAGS     = -mmcu=$(MCU) -I. -x assembler-with-cpp -Wa,-adhlns=$(<:.S=.lst),-gstabs
 CCFLAGS     = -mmcu=$(MCU) -Wall -Wstrict-prototypes -Os -frename-registers
-CCFLAGS    += -fshort-enums -fpack-struct -funsigned-char -funsigned-bitfields
+CCFLAGS    += -fshort-enums -fpack-struct -funsigned-char -funsigned-bitfields -finline-functions
 CCFLAGS    += $(DEFINES:%=-D%) $(INCLUDES:%=-I%)
 LDFLAGS     = -mmcu=$(MCU) -Wl,-u,vfprintf,-lprintf_min -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums
 LDFLGAS    += $(LIBS:%=-L%)
