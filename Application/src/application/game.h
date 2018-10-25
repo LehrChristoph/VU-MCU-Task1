@@ -15,5 +15,12 @@ typedef enum {
 	ADC_MODE_LFSR	= 1,
 } adc_mode_t;
 
+void game_init(void);
+
+void game_timer_callback(void);
+
+void game_ADC_callback(uint16_t adc_val);
+
+void game_start(void);
 
 #endif

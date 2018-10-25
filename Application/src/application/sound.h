@@ -18,6 +18,18 @@
 
 void sound_init(void);
 
-inline void sound_add_volume_val(uint8_t) __attribute__((always_inline)); // optimize function
+void sound_send_data(void);
+
+void sound_add_volume_val(uint8_t sound_input);
+
+void sound_set_volume(void);
+
+void sound_read_data(void);
+
+void sound_start_playing_startup(void);
+
+void sound_start_playing_theme(void);
+
+void sound_play_game_over(void);
 
 #endif
