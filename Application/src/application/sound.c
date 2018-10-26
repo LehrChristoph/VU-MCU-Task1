@@ -92,7 +92,7 @@ void sound_read_data()
          QueuedExecuter_add_function_call(&sound_read_data);
      }
 
-     current_address+=4;
+     current_address+=32;
 
      if( current_address >= end_address)
      {
