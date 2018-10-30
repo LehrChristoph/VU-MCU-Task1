@@ -52,13 +52,10 @@ void game_start_adc(void)
 
     ADC_enable();
     ADC_start_conversion();
-    // PORTL = counter++;
-    // sound_read_data();
 }
 
 void game_ADC_callback(uint16_t adc_val)
 {
-
     if(current_adc_mode == ADC_MODE_VOLUME)
     {
         current_adc_mode = ADC_MODE_LFSR;
@@ -74,7 +71,6 @@ void game_ADC_callback(uint16_t adc_val)
         uint8_t temp = adc_val & 0xFF;
         // not interested in shifted out bit
         (void) rand_shift(temp);
-
     }
     ADC_disable();
 }
