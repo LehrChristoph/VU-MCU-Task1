@@ -63,9 +63,9 @@ void game_ADC_callback(uint16_t adc_val)
     {
         current_adc_mode = ADC_MODE_LFSR;
         ADC_select_channel(ADC_CHANNEL_DIFFERENTIAL_ADC3_ADC2_GAIN_200X);
-        uint8_t temp = (adc_val >> 2);
         // shift out lowest 2 bit, not relevant
-        // sound_add_volume_val(temp);
+        uint8_t temp = (adc_val >> 2);
+        sound_add_volume_val(temp);
     }
     else
     {

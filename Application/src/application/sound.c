@@ -116,7 +116,7 @@ void sound_add_volume_val(uint8_t sound_input)
         if(volume_buffer[SOUND_VOLUME_BUFFER_SIZE/2] != volume)
         {
             volume = volume_buffer[SOUND_VOLUME_BUFFER_SIZE/2];
-
+            Tasker_resume_task(task_id_volume_task, 1);
         }
 
         volume_index=0;
