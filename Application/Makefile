@@ -15,8 +15,9 @@ INC_DIR		= ./inc
 LIB_DIR		= ./libs
 
 SRCS		= $(wildcard $(SRC_DIR)/*.c)
-SRCS	   += $(wildcard $(SRC_DIR)/avr_libs/basics/*.c)
-SRCS	   += $(wildcard $(SRC_DIR)/avr_libs/modules/*.c)
+SRCS	   += $(wildcard $(SRC_DIR)/basics/*.c)
+SRCS	   += $(wildcard $(SRC_DIR)/drivers/*.c)
+SRCS	   += $(wildcard $(SRC_DIR)/modules/*.c)
 SRCS	   += $(wildcard $(SRC_DIR)/application/*.c)
 
 OBJECTS     = $(SRCS:$(SRC_DIR)%.c=$(OBJ_DIR)%.o)
