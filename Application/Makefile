@@ -23,7 +23,7 @@ SRCS	   += $(wildcard $(SRC_DIR)/application/*.c)
 OBJECTS     = $(SRCS:$(SRC_DIR)%.c=$(OBJ_DIR)%.o)
 LIBOBJECTS  =
 
-INCLUDES	= $(SRC_DIR) $(SRC_DIR)/avr_libs $(INC_DIR)
+INCLUDES	= $(SRC_DIR) $(SRC_DIR)/application $(SRC_DIR)/basics $(SRC_DIR)/drivers $(SRC_DIR)/modules $(INC_DIR)
 LIB_DIRS	= $(OBJ_DIR)/avr_libs $(LIB_DIR)
 LIBS 		= glcd
 
