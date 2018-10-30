@@ -41,29 +41,19 @@ mp3_state_t mp3_state = REQUEST_DATA;
 #define GAME_OVER_SOUND_ADDRESS 7148256
 #define GAME_OVER_SOUND_LENGH 121968
 
-uint8_t sound_counter=0;
-
 uint8_t task_id_volume_task =-1;
 
 void sound_mp3_callback(void);
 
 void sound_init(void)
 {
-    uint8_t counter = 0;
-    PORTL = 0x00;
-    DDRL = 0xFF;
-
-    PORTK = 0x00;
-    DDRK = 0xFF;
-
     spiInit();
 
-    // TODO: handle errors
     error_t error_code = sdcardInit();
 
     if(error_code != SUCCESS)
     {
-        PORTH = 0x01;
+        // TODO: handle errors
     }
 
     mp3Init(&sound_mp3_callback);
@@ -76,7 +66,7 @@ void sound_init(void)
     task_id_volume_task =  Tasker_add_task(0x11, sound_set_volume, 0);
     if(Tasker_pause_task(task_id_volume_task) == TASKER_ERROR)
     {
-        PORTH = 0x02;
+        //TODO add error handling
     }
 
 }
@@ -149,7 +139,6 @@ void sound_read_data()
     error_t error_code = sdcardReadBlock(current_address, sound_buffer);
 
     current_address+=32;
-    PORTK = sound_buffer[5];
 
     if( current_address >= end_address)
     {
