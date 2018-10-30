@@ -11,7 +11,7 @@
 #include <stdbool.h>
 #include <util/atomic.h>
 
-#include "modules/QueuedExecuter.h"
+#include "modules/Tasker.h"
 
 #include "application/mp3.h"
 #include "application/spi.h"
@@ -43,6 +43,8 @@ mp3_state_t mp3_state = REQUEST_DATA;
 
 uint8_t sound_counter=0;
 
+uint8_t task_id_volume_task =-1;
+
 void sound_mp3_callback(void);
 
 void sound_init(void)
@@ -61,22 +63,27 @@ void sound_init(void)
 
     if(error_code != SUCCESS)
     {
-        PORTH = 0x0F;
+        PORTH = 0x01;
     }
 
     mp3Init(&sound_mp3_callback);
 
     while(mp3Busy() == true);
 
-    mp3SetVolume(0xFF);
+    mp3SetVolume(0xF5);
+
+
+    task_id_volume_task =  Tasker_add_task(0x11, sound_set_volume, 0);
+    if(Tasker_pause_task(task_id_volume_task) == ERROR)
+    {
+        PORTH = 0x02;
+    }
 
 }
 
 void sound_mp3_callback(void)
 {
     mp3_state = REQUEST_DATA;
-
-    PORTL = sound_counter++;
 }
 
 
@@ -94,29 +101,41 @@ void sound_add_volume_val(uint8_t sound_input)
     volume_buffer[volume_index] = sound_input;
     if(++volume_index == SOUND_VOLUME_BUFFER_SIZE)
     {
-        sound_set_volume();
+        for(uint8_t i =1; i < SOUND_VOLUME_BUFFER_SIZE-1; ++i)
+        {
+            for(uint8_t j =0; j < SOUND_VOLUME_BUFFER_SIZE-1; ++j)
+            {
+                if(volume_buffer[j] > volume_buffer[j+1])
+                {
+                    uint8_t temp = volume_buffer[j+1];
+                    volume_buffer[j+1] = volume_buffer[j];
+                    volume_buffer[j] = temp;
+                }
+            }
+        }
+        if(volume_buffer[SOUND_VOLUME_BUFFER_SIZE/2] != volume)
+        {
+            volume = volume_buffer[SOUND_VOLUME_BUFFER_SIZE/2];
+
+        }
+
         volume_index=0;
     }
 }
 
 void sound_set_volume(void)
 {
-    for(uint8_t i =1; i < SOUND_VOLUME_BUFFER_SIZE-1; ++i)
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
     {
-        for(uint8_t j =0; j < SOUND_VOLUME_BUFFER_SIZE-1; ++j)
+        if(mp3Busy() == false)
         {
-            if(volume_buffer[j] > volume_buffer[j+1])
-            {
-                uint8_t temp = volume_buffer[j+1];
-                volume_buffer[j+1] = volume_buffer[j];
-                volume_buffer[j] = temp;
-            }
+            mp3SetVolume(volume);
+            Tasker_pause_task(task_id_volume_task);
         }
-    }
-    if(volume_buffer[SOUND_VOLUME_BUFFER_SIZE/2] != volume)
-    {
-        volume = volume_buffer[SOUND_VOLUME_BUFFER_SIZE/2];
-        mp3SetVolume(volume);
+        else
+        {
+            Tasker_resume_task(task_id_volume_task, 1);
+        }
     }
 }
 
