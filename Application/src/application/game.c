@@ -11,7 +11,6 @@
 #include <avr/interrupt.h>
 
 #include "avr_libs/basics/ADC.h"
-#include "avr_libs/basics/Timer3.h"
 #include "avr_libs/modules/rand.h"
 #include "avr_libs/modules/Tasker.h"
 
@@ -21,11 +20,13 @@
 adc_mode_t current_adc_mode = ADC_MODE_VOLUME;
 
 void game_ADC_callback(uint16_t adc_val);
-void game_timer_callback(void);
+void game_start_adc(void);
 void game_cyclic_check(void);
 
 uint8_t counter =0;
 uint8_t task_id_cyclic_task =-1;
+uint8_t task_id_adc_task =-1;
+
 
 void game_init(void)
 {
@@ -42,14 +43,15 @@ void game_init(void)
     ADC_enable();
 
     task_id_cyclic_task =  Tasker_add_task(0x01, game_cyclic_check, 5);
+    task_id_adc_task =  Tasker_add_task(0x01, game_start_adc, 50);
 
 }
 
-void game_timer_callback(void)
+void game_start_adc(void)
 {
 
-    // ADC_enable();
-    // ADC_start_conversion();
+    ADC_enable();
+    ADC_start_conversion();
     // PORTL = counter++;
     // sound_read_data();
 }
@@ -57,24 +59,24 @@ void game_timer_callback(void)
 void game_ADC_callback(uint16_t adc_val)
 {
 
-    // if(current_adc_mode == ADC_MODE_VOLUME)
-    // {
-    //     current_adc_mode = ADC_MODE_LFSR;
-    //     ADC_select_channel(ADC_CHANNEL_DIFFERENTIAL_ADC3_ADC2_GAIN_200X);
-    //     uint8_t temp = (adc_val >> 2);
-    //     // shift out lowest 2 bit, not relevant
-    //     // sound_add_volume_val(temp);
-    // }
-    // else
-    // {
-    //     current_adc_mode = ADC_MODE_VOLUME;
-    //     ADC_select_channel(ADC_CHANNEL_ADC0);
-    //     uint8_t temp = adc_val & 0xFF;
-    //     // not interested in shifted out bit
-    //     (void) rand_shift(temp);
-    //
-    // }
-    // ADC_disable();
+    if(current_adc_mode == ADC_MODE_VOLUME)
+    {
+        current_adc_mode = ADC_MODE_LFSR;
+        ADC_select_channel(ADC_CHANNEL_DIFFERENTIAL_ADC3_ADC2_GAIN_200X);
+        uint8_t temp = (adc_val >> 2);
+        // shift out lowest 2 bit, not relevant
+        // sound_add_volume_val(temp);
+    }
+    else
+    {
+        current_adc_mode = ADC_MODE_VOLUME;
+        ADC_select_channel(ADC_CHANNEL_ADC0);
+        uint8_t temp = adc_val & 0xFF;
+        // not interested in shifted out bit
+        (void) rand_shift(temp);
+
+    }
+    ADC_disable();
 }
 
 void game_start(void)
