@@ -16,6 +16,16 @@
     #define SOUND_VOLUME_BUFFER_SIZE 5
 #endif
 
+typedef enum {
+	BUFFER_EMPTY,
+    BUFFER_FULL,
+} buffer_state_t;
+
+typedef enum {
+	REQUEST_DATA,
+    MP3_FULL,
+} mp3_state_t;
+
 void sound_init(void);
 
 void sound_send_data(void);
