@@ -9,6 +9,7 @@
 
 #include <avr/io.h>
 #include <stdbool.h>
+#include <util/atomic.h>
 
 #include "modules/QueuedExecuter.h"
 
@@ -25,6 +26,9 @@ uint8_t volume = 0;
 uint8_t volume_buffer[SOUND_VOLUME_BUFFER_SIZE];
 uint8_t volume_index = 0;
 
+buffer_state_t buffer_state = BUFFER_EMPTY;
+mp3_state_t mp3_state = REQUEST_DATA;
+
 // Tetris
 #define THEME_ADDRESS 6778144
 #define THEME_LENGTH 281808
@@ -37,18 +41,52 @@ uint8_t volume_index = 0;
 #define GAME_OVER_SOUND_ADDRESS 7148256
 #define GAME_OVER_SOUND_LENGH 121968
 
+uint8_t sound_counter=0;
+
+void sound_mp3_callback(void);
+
 void sound_init(void)
 {
+    uint8_t counter = 0;
+    PORTL = 0x00;
+    DDRL = 0xFF;
+
+    PORTK = 0x00;
+    DDRK = 0xFF;
+
     spiInit();
+
     // TODO: handle errors
     error_t error_code = sdcardInit();
-    mp3Init(&sound_send_data);
+
+    if(error_code != SUCCESS)
+    {
+        PORTH = 0x0F;
+    }
+
+    mp3Init(&sound_mp3_callback);
+
+    while(mp3Busy() == true);
+
+    mp3SetVolume(0xFF);
+
 }
+
+void sound_mp3_callback(void)
+{
+    mp3_state = REQUEST_DATA;
+
+    PORTL = sound_counter++;
+}
+
 
 void sound_send_data(void)
 {
-    mp3SendMusic(sound_buffer);
-    QueuedExecuter_add_function_call(&sound_read_data);
+    if(mp3_state == REQUEST_DATA)
+    {
+        mp3SendMusic(sound_buffer);
+        buffer_state = BUFFER_EMPTY;
+    }
 }
 
 void sound_add_volume_val(uint8_t sound_input)
@@ -56,7 +94,7 @@ void sound_add_volume_val(uint8_t sound_input)
     volume_buffer[volume_index] = sound_input;
     if(++volume_index == SOUND_VOLUME_BUFFER_SIZE)
     {
-        QueuedExecuter_add_function_call(&sound_set_volume);
+        sound_set_volume();
         volume_index=0;
     }
 }
@@ -84,31 +122,40 @@ void sound_set_volume(void)
 
 void sound_read_data()
 {
-     error_t error_code = sdcardReadBlock(current_address, sound_buffer);
+    if (buffer_state == BUFFER_FULL)
+    {
+        return;
+    }
 
-     // unable to read data, reschedule sd card access
-     if(error_code != SUCCESS)
-     {
-         QueuedExecuter_add_function_call(&sound_read_data);
-     }
+    error_t error_code = sdcardReadBlock(current_address, sound_buffer);
 
-     current_address+=32;
+    current_address+=32;
+    PORTK = sound_buffer[5];
 
-     if( current_address >= end_address)
-     {
-         current_address = start_address;
-     }
+    if( current_address >= end_address)
+    {
+        current_address = start_address;
+    }
 
-     if(mp3Busy() == false)
-     {
-         sound_send_data();
-     }
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+    {
+        buffer_state = BUFFER_FULL;
+        if(mp3Busy() == false)
+        {
+            mp3_state = REQUEST_DATA;
+        }
+        else
+        {
+            mp3_state = MP3_FULL;
+        }
+    }
 }
 
 void sound_start_playing_startup(void)
 {
      current_address = start_address = STATRTUP_SOUND_ADDRESS;
      end_address = STATRTUP_SOUND_ADDRESS + STATRTUP_SOUND_LENGTH;
+     buffer_state = BUFFER_EMPTY;
      sound_read_data();
 }
 
@@ -116,6 +163,7 @@ void sound_start_playing_theme(void)
 {
     current_address = start_address = THEME_ADDRESS;
     end_address = THEME_ADDRESS + THEME_LENGTH;
+    buffer_state = BUFFER_EMPTY;
     sound_read_data();
 }
 
@@ -123,5 +171,6 @@ void sound_play_game_over(void)
 {
     current_address = start_address = GAME_OVER_SOUND_ADDRESS;
     end_address = GAME_OVER_SOUND_ADDRESS + GAME_OVER_SOUND_LENGH;
+    buffer_state = BUFFER_EMPTY;
     sound_read_data();
 }
