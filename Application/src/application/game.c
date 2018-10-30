@@ -10,9 +10,9 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 
-#include "avr_libs/basics/ADC.h"
-#include "avr_libs/modules/rand.h"
-#include "avr_libs/modules/Tasker.h"
+#include "basics/ADC.h"
+#include "modules/rand.h"
+#include "modules/Tasker.h"
 
 #include "application/field.h"
 #include "application/sound.h"

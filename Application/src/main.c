@@ -11,7 +11,7 @@
 #include <avr/sleep.h>
 
 #include "application/game.h"
-#include "avr_libs/modules/Tasker.h"
+#include "modules/Tasker.h"
 
 // #include "application/sound.h"
 // #include "application/spi.h"

@@ -5,7 +5,7 @@
 
 // CLH Adaptions :
 // include own implementation of external intererupts
-#include "avr_libs/basics/PinChangeInterrupts.h"
+#include "basics/PinChangeInterrupts.h"
 
 // internal definitions
 #define mp3CSLow()	MP3_PORT &= ~(1<<MP3_CS)
