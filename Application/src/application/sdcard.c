@@ -6,6 +6,8 @@ thanks for infos and hints go to
  - Chris Hinger
  - CC Dharmani (http://www.dharmanitech.com)
 
+ - Adapted for HW revision 1.21 - 2018 Thomas Lamprecht <tlamprecht@ecs.tuwien.ac.at>
+
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation; either version 2
@@ -67,6 +69,7 @@ typedef enum {
 
 static response_t command(const command_t command, const uint32_t argument, uint8_t crc, uint8_t responseLen);
 static response_t singleCommand(const command_t command, const uint32_t argument, uint8_t crc, uint8_t responseLen);
+static response_t resetCommand(void);
 static response_t appCommand(const command_t command, const uint32_t argument, uint8_t crc, uint8_t responseLen);
 static inline void csEnable(void);
 static inline void csDisable(void);
@@ -85,42 +88,43 @@ error_t sdcardInit() {
 	error_t err = SUCCESS;
 	uint32_t timeout;
 
+#if 1 // works with both rev 1.10 and rev 1.21 (which has no CD)
+	SDCARD_DDR |= (1<<SDCARD_CS);
+#else
 	SDCARD_DDR = (SDCARD_DDR & ~(1<<SDCARD_CD)) | (1<<SDCARD_CS);
+#endif
+
 	SDCARD_PORT |= (1<<SDCARD_CS);
 
 #ifndef IGNORE_SPI_SPEED
 	spiSetPrescaler(SPI_PRESCALER_128);
 #endif
 
-	if (sdcardAvailable() == false) {
-		return E_NOCARD;
-	}
-
-	for (i = 0; i<200; i++) {													// sending dummy-packets
+	for (i = 0; i<200; i++) { // sending dummy-packets
 		spiSend(0xFF);
 	}
 
-	response = singleCommand(GO_IDLE_STATE, 0, 0x95, 1);						// reset card
+	response = resetCommand();
 	if (response.v != 0x01) {
 		debug("reset failed %x\n", response.v);
-		err = ERROR;
+		err = E_NOCARD;
 		goto error;
 	}
 
 	timeout = READ_TIMEOUT;
-	response = singleCommand(SEND_IF_COND, 0x000001AA, 0x87, 5);				// use this to check card type
-	if (response.v != 0x01) {													// found sdc version 1 or mmc
+	response = singleCommand(SEND_IF_COND, 0x000001AA, 0x87, 5); // use this to check card type
+	if (response.v != 0x01) { // found sdc version 1 or mmc
 		debug("found sdc 1\n");
 		do {
-			response = appCommand(SEND_OP_COND, 0, 0, 1);						// activate card
+			response = appCommand(SEND_OP_COND, 0, 0, 1); // activate card
 			debug("activate sdc1 %x\n", response.v);
 			if (response.v == 0x01) {
-				// idle, try again
+ // idle, try again
 			}
-			else if (response.v == SUCCESS) {									// found sdc version 1
+			else if (response.v == SUCCESS) { // found sdc version 1
 				break;
 			}
-			else {																// found mmc
+			else { // found mmc
 #ifdef MMC_SUPPORT
 				timeout = 0;
 				break;
@@ -134,10 +138,10 @@ error_t sdcardInit() {
 		} while (timeout > 0);
 
 #ifdef MMC_SUPPORT
-		if (timeout == 0) {														// init MMC
+		if (timeout == 0) { // init MMC
 			timeout = READ_TIMEOUT;
 			debug("found mmc\n");
-			response = singleCommand(GO_IDLE_STATE, 0, 0x95, 1);				// reset card
+			response = singleCommand(GO_IDLE_STATE, 0, 0x95, 1); // reset card
 			if (response.v != 0x01) {
 				debug("reset failed %x\n", response.v);
 				err = ERROR;
@@ -147,7 +151,7 @@ error_t sdcardInit() {
 				response = singleCommand(SEND_OP_COND, 0, 0, 1);
 				debug("activate mmc %x\n", response.v);
 				if (response.v == 0x01) {
-					// idle, try again
+ // idle, try again
 				}
 				else if (response.v == SUCCESS) {
 					break;
@@ -162,18 +166,18 @@ error_t sdcardInit() {
 		}
 #endif
 	}
-	else if ((response.r.r7>>16) != 0xaa01) {									// found sdc version 2
+	else if ((response.r.r7>>16) != 0xaa01) { // found sdc version 2
 		debug("sd Version 2, unsupported card %x\n", response.v);
 		err = E_UNKNOWN_CARD;
 		goto error;
 	}
-	else {																		// found sdc version 2
+	else { // found sdc version 2
 		debug("found sdc 2\n");
 		do {
-			response = appCommand(SEND_OP_COND, 0x40000000, 0, 1);				// activate card
+			response = appCommand(SEND_OP_COND, 0x40000000, 0, 1); // activate card
 			debug("activate sdc2 %x\n", response.v);
 			if (response.v == 0x01) {
-				// idle, try again
+ // idle, try again
 			}
 			else if (response.v == SUCCESS) {
 				break;
@@ -207,8 +211,13 @@ error:
 	return err;
 }
 
+// depreacated
 bool sdcardAvailable() {
+#if 1
+	return true;
+#else
 	return ((SDCARD_PIN & (1<<SDCARD_CD)) != 0) ? false : true;
+#endif
 }
 
 error_t sdcardReadBlock(uint32_t byteAddress, sdcard_block_t buffer) {
@@ -246,12 +255,12 @@ error_t sdcardReadBlock(uint32_t byteAddress, sdcard_block_t buffer) {
 		buffer[i] = spiReceive();
 	}
 
-	spiReceive();	// read crc
+	spiReceive(); // read crc
 	spiReceive();
 
 error:
 	csDisable();
-	spiReceive();	// extra 8 clock cycles
+	spiReceive(); // extra 8 clock cycles
 
 	return err;
 }
@@ -275,11 +284,23 @@ error:
 response_t singleCommand(const command_t _command, const uint32_t argument, uint8_t crc, uint8_t responseLen) {
 	response_t response;
 
-	spiReceive();			// extra 8 clock cycles, why ???
+	spiReceive(); // extra 8 clock cycles, why ???
 	csEnable();
 	response = command (_command, argument, crc, responseLen);
 	csDisable();
-	spiReceive();			// additional 8 clock cycles
+	spiReceive(); // additional 8 clock cycles
+
+	return response;
+}
+
+static response_t resetCommand(void) {
+	response_t response;
+
+	spiReceive(); // extra 8 clock cycles, why ???
+	csEnable();
+	response = command (GO_IDLE_STATE, 0, 0x95, 1);
+	csDisable();
+	spiReceive(); // additional 8 clock cycles
 
 	return response;
 }
