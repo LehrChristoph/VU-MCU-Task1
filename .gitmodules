@@ -1,0 +1,9 @@
+[submodule "Application/src/basics"]
+	path = Application/src/basics
+	url = git@bitbucket.org:christophLehr/avr-basics.git
+[submodule "Application/src/modules"]
+	path = Application/src/modules
+	url = git@bitbucket.org:development_team/avr-modules.git
+[submodule "Application/src/drivers"]
+	path = Application/src/drivers
+	url = git@bitbucket.org:development_team/avr-drivers.git
