@@ -74,7 +74,7 @@ void sound_init(void)
 
 
     task_id_volume_task =  Tasker_add_task(0x11, sound_set_volume, 0);
-    if(Tasker_pause_task(task_id_volume_task) == ERROR)
+    if(Tasker_pause_task(task_id_volume_task) == TASKER_ERROR)
     {
         PORTH = 0x02;
     }
