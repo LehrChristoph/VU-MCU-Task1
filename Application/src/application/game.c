@@ -13,6 +13,7 @@
 #include "avr_libs/basics/ADC.h"
 #include "avr_libs/basics/Timer3.h"
 #include "avr_libs/modules/rand.h"
+#include "avr_libs/modules/Tasker.h"
 
 #include "application/field.h"
 #include "application/sound.h"
@@ -21,32 +22,26 @@ adc_mode_t current_adc_mode = ADC_MODE_VOLUME;
 
 void game_ADC_callback(uint16_t adc_val);
 void game_timer_callback(void);
+void game_cyclic_check(void);
 
 uint8_t counter =0;
+uint8_t task_id_cyclic_task =-1;
 
 void game_init(void)
 {
-
     sound_init();
     field_init();
 
     //setup ADC
-    // ADC_select_channel(ADC_CHANNEL_ADC0);
-    // ADC_select_prescaler(ADC_PRESCALER_128);
-    // ADC_select_voltage_referance(ADC_REF_VCC);
-    // ADC_adjust_right();
-    // ADC_set_callback(&game_ADC_callback);
-    // ADC_enable_interrupt();
-    // ADC_enable();
+    ADC_select_channel(ADC_CHANNEL_ADC0);
+    ADC_select_prescaler(ADC_PRESCALER_128);
+    ADC_select_voltage_referance(ADC_REF_VCC);
+    ADC_adjust_right();
+    ADC_set_callback(&game_ADC_callback);
+    ADC_enable_interrupt();
+    ADC_enable();
 
-
-    // configure a 5ms timer
-    // timer3_set_waveform_generation_mode(TIMER3_CTC_MODE_TOP_OCR3A);
-    // timer3_set_prescaler(TIMER3_PRESCALER_8);
-    // timer3_set_output_compare_A(50);
-    // timer3_enable_output_compare_interrupt_A(&game_timer_callback);
-    // timer3_activate_output_A(TIMER3_CTC_NO_PORT_OPERATION);
-    // timer3_reset_counter();
+    task_id_cyclic_task =  Tasker_add_task(0x01, game_cyclic_check, 5);
 
 }
 
@@ -92,7 +87,6 @@ void game_start(void)
 
 void game_cyclic_check(void)
 {
-    // load new data if necessary
     sound_read_data();
     sound_send_data();
 }
