@@ -11,40 +11,40 @@
 
 void spiInit(void)
 {
-    SPCR |=  (1 << SPE | 1 << MSTR );
-    SPCR &= ~(1 << DORD | 1 << CPOL | 1 << CPHA);
-
-    uint8_t temp = PORTB & 0xF0;
-    PORTB |=  (temp | 1 << PB0 );
+    uint8_t temp = PORTB;
+    PORTB =  (temp | 1 << PB3);
     temp = DDRB & 0xF0;
-    DDRB = (temp | 1 << PB0 | 1 << PB1 | 1 << PB2);
+    DDRB = (temp | 1 << PB1 | 1 << PB2);
+
+    temp = SPCR;
+    temp |=  (1 << MSTR | 1 << SPE);
+    temp &= ~(1 << DORD | 1 << CPOL | 1 << CPHA);
+    SPCR = temp;
 }
 
 void spiSend(uint8_t data)
 {
-    // check if transfer is currently active
-    while(!(SPSR & (1<<SPIF) ));
     // send data
     SPDR = data;
+    SPCR |=  (1 << MSTR );
     // wait until transfer is completed
-    while(!(SPSR & (1<<SPIF) ));
+    while((SPSR & (1<<SPIF)) == 0);
+
 }
 
 uint8_t spiReceive(void)
 {
-    uint8_t data= 0xFF;
-    // wait until last transfer is finished
-    while(!(SPSR & (1<<SPIF) ));
     // send dummy byte
-    SPDR = data;
+    SPDR = 0xFF;
     // wait until transfer is completed
     while(!(SPSR & (1<<SPIF) ));
-    // retrieve data
-    data = SPDR;
-    return data;
+    // return received data
+    return SPDR;
 }
+
 void spiSetPrescaler(spi_prescaler_t prescaler)
 {
+
     switch (prescaler)
     {
         case SPI_PRESCALER_128:
@@ -56,5 +56,4 @@ void spiSetPrescaler(spi_prescaler_t prescaler)
             SPSR &= ~(1 << SPI2X);
             break;
     }
-
 }
