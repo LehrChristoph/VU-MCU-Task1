@@ -1,6 +1,6 @@
 [submodule "Application/src/basics"]
 	path = Application/src/basics
-	url = git@bitbucket.org:christophLehr/avr-basics.git
+	url = git@bitbucket.org:development_team/avr-basics.git
 [submodule "Application/src/modules"]
 	path = Application/src/modules
 	url = git@bitbucket.org:development_team/avr-modules.git
