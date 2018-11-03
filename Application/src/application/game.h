@@ -11,8 +11,11 @@
 #define APPLICATION_GAME_H_
 
 typedef enum {
-	ADC_MODE_VOLUME	= 0,
-	ADC_MODE_LFSR	= 1,
+    ADC_MODE_INIT_LFSR      = 0,
+    ADC_MODE_NEXT_VOLUME    = 1,
+    ADC_MODE_VOLUME         = 2,
+    ADC_MODE_NEXT_LFSR      = 3,
+	ADC_MODE_LFSR           = 4,
 } adc_mode_t;
 
 void game_init(void);
