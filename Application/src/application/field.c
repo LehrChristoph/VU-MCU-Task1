@@ -187,7 +187,6 @@ void field_update_ball_position(uint8_t y_shift)
         {
             uint8_t start_x=0, end_x=7;
             uint16_t seed = field_barriers_current[i].seed;
-            // PORTL ^= (1<<PORTL0);
 
             uint8_t collision_left = field_ball_bottom_current.x;
             uint8_t collision_right = field_ball_bottom_current.x;
