@@ -23,10 +23,8 @@ void game_ADC_callback(uint16_t adc_val);
 void game_start_adc(void);
 void game_cyclic_check(void);
 
-uint8_t counter =0;
-uint8_t task_id_cyclic_task =-1;
-uint8_t task_id_adc_task =-1;
-
+static uint8_t game_task_id_cyclic_task =-1;
+static uint8_t game_task_id_adc_task =-1;
 static game_state_t game_state = GAME_IDLE;
 
 void game_init(void)
