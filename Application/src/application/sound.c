@@ -17,17 +17,17 @@
 #include "application/spi.h"
 #include "application/sdcard.h"
 
-uint8_t sound_buffer[BLOCK_SIZE];
-uint32_t start_address = 0;
-uint32_t current_address = 0;
-uint32_t end_address = 0;
+static uint8_t sound_buffer[BLOCK_SIZE];
+static uint32_t start_address = 0;
+static uint32_t current_address = 0;
+static uint32_t end_address = 0;
 
-uint8_t volume = 0;
-uint8_t volume_buffer[SOUND_VOLUME_BUFFER_SIZE];
-uint8_t volume_index = 0;
+static uint8_t volume = 0;
+static uint8_t volume_buffer[SOUND_VOLUME_BUFFER_SIZE];
+static uint8_t volume_index = 0;
 
-buffer_state_t buffer_state = BUFFER_EMPTY;
-mp3_state_t mp3_state = REQUEST_DATA;
+static buffer_state_t buffer_state = BUFFER_EMPTY;
+static mp3_state_t mp3_state = REQUEST_DATA;
 
 // Tetris
 #define THEME_ADDRESS 6778144
@@ -41,9 +41,11 @@ mp3_state_t mp3_state = REQUEST_DATA;
 #define GAME_OVER_SOUND_ADDRESS 7148256
 #define GAME_OVER_SOUND_LENGH 121968
 
-uint8_t task_id_volume_task =-1;
+static uint8_t sound_task_id_volume_task =-1;
+static uint8_t sound_task_id_cyclic_task =-1;
 
 void sound_mp3_callback(void);
+void sound_cyclic_task(void);
 
 void sound_init(void)
 {
@@ -62,14 +64,22 @@ void sound_init(void)
 
     mp3SetVolume(0xF5);
 
+    sound_task_id_cyclic_task =  Tasker_add_task(0x12, sound_cyclic_task, 5);
+    sound_task_id_volume_task =  Tasker_add_task(0x11, sound_set_volume, 0);
 
-    task_id_volume_task =  Tasker_add_task(0x11, sound_set_volume, 0);
-    if(Tasker_pause_task(task_id_volume_task) == TASKER_ERROR)
+    if(Tasker_pause_task(sound_task_id_volume_task) == TASKER_ERROR)
     {
         //TODO add error handling
     }
 
 }
+
+void sound_cyclic_task(void)
+{
+    sound_read_data();
+    sound_send_data();
+}
+
 
 void sound_mp3_callback(void)
 {
@@ -106,7 +116,7 @@ void sound_add_volume_val(uint8_t sound_input)
         if(volume_buffer[SOUND_VOLUME_BUFFER_SIZE/2] != volume)
         {
             volume = volume_buffer[SOUND_VOLUME_BUFFER_SIZE/2];
-            Tasker_resume_task(task_id_volume_task, 1);
+            Tasker_resume_task(sound_task_id_volume_task, 1);
         }
 
         volume_index=0;
@@ -120,11 +130,11 @@ void sound_set_volume(void)
         if(mp3Busy() == false)
         {
             mp3SetVolume(volume);
-            Tasker_pause_task(task_id_volume_task);
+            Tasker_pause_task(sound_task_id_volume_task);
         }
         else
         {
-            Tasker_resume_task(task_id_volume_task, 1);
+            Tasker_resume_task(sound_task_id_volume_task, 1);
         }
     }
 }
