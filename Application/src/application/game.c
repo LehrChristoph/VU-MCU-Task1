@@ -17,7 +17,7 @@
 #include "application/field.h"
 #include "application/sound.h"
 
-adc_mode_t current_adc_mode = ADC_MODE_VOLUME;
+adc_mode_t current_adc_mode = ADC_MODE_INIT_LFSR;
 
 void game_ADC_callback(uint16_t adc_val);
 void game_start_adc(void);
@@ -27,9 +27,12 @@ uint8_t counter =0;
 uint8_t task_id_cyclic_task =-1;
 uint8_t task_id_adc_task =-1;
 
+static game_state_t game_state = GAME_IDLE;
 
 void game_init(void)
 {
+    game_state = GAME_IDLE;
+
     sound_init();
     field_init();
 
@@ -98,9 +101,31 @@ void game_ADC_callback(uint16_t adc_val)
 void game_start(void)
 {
     // display start screen
-
+    field_updated_local_game_state(GAME_STARTUP);
+    game_state = GAME_STARTUP;
     // play startup theme
     sound_start_playing_startup();
+}
+
+
+void game_set_state(game_state_t new_game_state)
+{
+    game_state = new_game_state;
+
+    switch(new_game_state)
+    {
+        case GAME_STARTUP :
+            sound_start_playing_startup();
+            break;
+        case GAME_IDLE :
+            break;
+    	case GAME_PLAYING:
+            sound_start_playing_theme();
+            break;
+        case GAME_OVER:
+            sound_play_game_over();
+            break;
+    }
 }
 
 void game_cyclic_check(void)
