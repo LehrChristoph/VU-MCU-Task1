@@ -129,7 +129,17 @@ void sound_set_volume(void)
     {
         if(mp3Busy() == false)
         {
-            mp3SetVolume(volume);
+            uint16_t calc_volume = 0xFF - volume;
+            calc_volume *= calc_volume;
+            calc_volume >>= 8;
+            calc_volume *= calc_volume;
+            calc_volume >>= 8;
+
+            // invert scale
+            calc_volume = 0xFF-calc_volume;
+
+
+            mp3SetVolume(calc_volume);
             Tasker_pause_task(sound_task_id_volume_task);
         }
         else
