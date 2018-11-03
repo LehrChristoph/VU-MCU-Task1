@@ -105,6 +105,6 @@ void game_start(void)
 
 void game_cyclic_check(void)
 {
-    sound_read_data();
-    sound_send_data();
+
+
 }
