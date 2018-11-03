@@ -109,6 +109,7 @@ void game_start(void)
 void game_set_state(game_state_t new_game_state)
 {
     game_state = new_game_state;
+    field_updated_local_game_state(new_game_state);
 
     switch(new_game_state)
     {
