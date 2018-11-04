@@ -168,6 +168,11 @@ void field_update_positions(void)
             {
                 current_score += FIELD_DEFAULT_SPEED-game_speed;
             }
+
+            if(field_barrier_index == 0 && game_speed > 1)
+            {
+                game_speed--;
+            }
         }
 
         field_update_ball_position(y_shift);
