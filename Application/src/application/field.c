@@ -44,6 +44,8 @@ static uint8_t already_displayed = 0x00;
 const char startup_message[] PROGMEM = "FALLING DOWN BALL";
 const char game_over_message[] PROGMEM = "GAME OVER";
 
+static uint16_t current_score;
+static uint8_t score_postion;
 void field_init(void)
 {
     glcdInit();
@@ -56,6 +58,8 @@ void field_init(void)
     field_ball_bottom_current.x = 63;
     field_ball_bottom_current.y = FIELD_GLCD_HEIGTH -2;
 
+    current_score =0;
+    score_postion =0;
     field_barrier_index=0;
     for(uint8_t i=0; i<8; i++)
     {
@@ -107,6 +111,7 @@ void field_display_start_screen(void)
         message_point.y = 32;
         glcdFillScreen(GLCD_CLEAR);
         glcdDrawTextPgm(startup_message, message_point, &Standard5x7, glcdSetPixel);
+        ScoreBoard_display(0x00);
         already_displayed = 0xFF;
     }
 }
@@ -125,7 +130,12 @@ void field_display_end(void)
         message_point.y = 32;
         glcdFillScreen(GLCD_CLEAR);
         glcdDrawTextPgm(game_over_message, message_point, &Standard5x7, glcdSetPixel);
+
         already_displayed = 0xFF;
+        score_t new_score;
+        new_score.score = current_score;
+        score_postion = ScoreBoard_new_score(new_score);
+        ScoreBoard_display(score_postion);
     }
 
 }
@@ -154,6 +164,10 @@ void field_update_positions(void)
             field_draw_barrier(field_barriers_current[field_barrier_index], y_shift);
 
             field_barrier_index = (field_barrier_index+1)%8;
+            if(field_barriers_current[FIELD_BARRIER_ARRAY_SIZE-1].seed != 0x00)
+            {
+                current_score += FIELD_DEFAULT_SPEED-game_speed;
+            }
         }
 
         field_update_ball_position(y_shift);
