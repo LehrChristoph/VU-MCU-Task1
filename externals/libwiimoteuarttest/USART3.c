@@ -30,7 +30,7 @@ uint16_t usart3_write_index = 0;
 
 usart3_flow_control_t usart3_mode = USART3_SEND_ENABLED;
 
-uint8_t uart_counter = 1;
+volatile uint8_t uart_counter = 0;
 
 void USART3_inits(uint8_t baudrate, uint8_t stop_bits, uint8_t parity, uint8_t char_size)
 {
@@ -233,7 +233,7 @@ void USART3_pin_change_callback(void)
 
 ISR(USART3_RX_vect)
 {
-    char data = UDR3;
+    uint8_t data = UDR3;
     (*usart3_receiver_callback)(data);
 }
 
@@ -251,7 +251,7 @@ ISR(USART3_UDRE_vect)
 
         if (usart3_mode == USART3_DISABLE_SEND)
         {
-            usart3_mode = USART3_DISABLE_SEND;
+            usart3_mode = USART3_SEND_DISABLED;
         }
     }
     else
