@@ -1,10 +1,29 @@
+/*
+mp3lib for VS1011E
+Copyright (C) 2011 Andreas Hagmann, Embedded Computing Systems group - TU Wien
+
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version 2
+of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+*/
+
 #include "mp3.h"
+
+#include <spi.h>
 
 #include <util/delay.h>
 #include <avr/interrupt.h>
 
-// CLH Adaptions :
-// include own implementation of external intererupts
 #include "basics/PinChangeInterrupts.h"
 
 // internal definitions
@@ -19,14 +38,19 @@ static void sciWrite(uint8_t addr, uint16_t data);
 static void mp3WaitBusy(void);
 static void (*dataRequest)(void);
 
+static uint8_t vs_version = 0;
+
 typedef enum {
 	OP_WRITE= 0x02,
 	OP_READ	= 0x03,
 } opcode_t;
 
 typedef enum {
-	CLOCKF	= 0x03,
 	MODE	= 0x00,
+	STATUS	= 0x01,
+	BASS	= 0x02,
+	CLOCKF	= 0x03,
+	DECODE_TIME	= 0x04,
 	VOL		= 0x0b,
 } register_t;
 
@@ -75,20 +99,40 @@ void mp3Init(void (*dataRequestCallback)(void)) {
 	INT_PORT |= 1<<DREQ;
 	INT_DDR &= ~(1<<DREQ);
 
-	bsyncHigh();
-	mp3CSHigh();
-
 	// hardware reset
 	MP3_PORT &= ~(1<<MP3_RST);
 	_delay_ms(1);
+
+	bsyncHigh();
+	mp3CSHigh();
 	MP3_PORT |= (1<<MP3_RST);
+	mp3WaitBusy();
 
-	sciWrite(CLOCKF, 12500);	// set clock frequency
-	sciWrite(MODE, (1<<11));	// native mode
+	// ensure we are not to fast, else we or board get many bit errors
+	spiSetPrescaler(SPI_PRESCALER_128);
 
+	sciWrite(MODE, (1<<11)|(1<<2));	// native mode
+	_delay_us(100);
+
+	uint16_t vs_status = sciRead(STATUS);
+	vs_version = (vs_status >> 4) & 0x0F;
+
+	// set clock freq
+	if (vs_version == 2) { // rev 1.10, vs1011e
+		// (25 MHz / 2 KHz) see vs1011e datasheet 8.6.4 CLOCKF
+		sciWrite(CLOCKF, 12500L);
+
+	} else if (vs_version == 4) { // rev 1.21, vs1053b
+		// tell PLL to multiple by 2.5, helps a bit with SCLK sampling
+		sciWrite(CLOCKF, 0x4000);
+	}
+
+	sciWrite(BASS, 0x7A00);	// get some bass
 	sciWrite(VOL, 0x3000);
 
-	// init external INT0, orig replaced by CLH
+	spiSetPrescaler(SPI_PRESCALER_4);
+
+    // init external INT0, orig replaced by CLH
     PinCahngeInterrupts_enable_external_interupt(EXTERNAL_INTERRUPT_ON_RISING_EDGE, EXTERNAL_INTERRUPT_0, dataRequestCallback);
 
 }
@@ -107,6 +151,7 @@ void mp3StartSineTest() {
 
 	mp3WaitBusy();
 
+	spiSetPrescaler(SPI_PRESCALER_16);
 	bsyncLow();
 	spiSend(0x53);
 	spiSend(0xef);
@@ -117,6 +162,7 @@ void mp3StartSineTest() {
 	spiSend(0x00);
 	spiSend(0x00);
 	bsyncHigh();
+	spiSetPrescaler(SPI_PRESCALER_4);
 }
 
 void mp3SendMusic(uint8_t *buffer) {
@@ -124,9 +170,23 @@ void mp3SendMusic(uint8_t *buffer) {
 
 	mp3WaitBusy();		// during normal operation, this is no busy wait loop, only during initialisation
 
+	// TODO: this should return the current (old) prescaler so that we can reset
+	// to the correct actual value below
+	spiSetPrescaler(SPI_PRESCALER_16);
 	bsyncLow();
 	for (i=0; i<32; i++) {
 		spiSend(buffer[i]);
 	}
 	bsyncHigh();
+	spiSetPrescaler(SPI_PRESCALER_4);
+}
+
+uint8_t mp3GetVS10xxVersion(void) {
+	spiSetPrescaler(SPI_PRESCALER_16);
+	uint16_t vs_status = sciRead(STATUS);
+	spiSetPrescaler(SPI_PRESCALER_4);
+
+	vs_version = (vs_status >> 4) & 0x0F;
+
+	return vs_version;
 }

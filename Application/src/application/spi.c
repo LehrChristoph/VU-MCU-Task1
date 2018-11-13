@@ -51,6 +51,11 @@ void spiSetPrescaler(spi_prescaler_t prescaler)
             SPCR |=  (1 << SPR1 | 1 << SPR0);
             SPSR &= ~(1 << SPI2X);
             break;
+        case SPI_PRESCALER_16:
+            SPCR |=  (1 << SPR0);
+            SPCR &= ~(1 << SPR1);
+            SPSR &= ~(1 << SPI2X);
+            break;
     	case SPI_PRESCALER_4:
             SPCR &= ~(1 << SPR1 | 1 << SPR0);
             SPSR &= ~(1 << SPI2X);
