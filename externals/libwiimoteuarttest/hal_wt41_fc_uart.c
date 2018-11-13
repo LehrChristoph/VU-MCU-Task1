@@ -36,18 +36,11 @@ volatile uint8_t recv_flag ;
 
 error_t halWT41FcUartInit(void (*sndCallback)(), void (*rcvCallback)(uint8_t))
 {
-
-    PORTH = 0x00;
-    DDRH = 0xFF;
-
-    PORTK = 0x00;
-    DDRK = 0xFF;
+    DDRJ |= (1 << PORTJ5);
+    PORTJ &= ~(1 << PORTJ5);
 
     PORTL = 0x00;
     DDRL = 0xFF;
-
-    DDRJ |= (1 << PORTJ5);
-    PORTJ &= ~(1 << PORTJ5);
 
     timer1_set_prescaler(TIMER1_PRESCALER_64);
     timer1_set_waveform_generation_mode(TIMER1_CTC_MODE_TOP_OCR1A);
@@ -69,7 +62,6 @@ error_t halWT41FcUartInit(void (*sndCallback)(), void (*rcvCallback)(uint8_t))
     halWT41_send_callback = sndCallback;
     USART3_enable_receiver(halWT41FcUart_Receive);
 
-    PORTK ^= (1 << PORTK0);
     recv_flag= 0x00;
     return SUCCESS;
 }
@@ -85,14 +77,11 @@ void halWT41FcUart_timer_callback(void)
 error_t halWT41FcUartSend(uint8_t byte)
 {
     static uint8_t send_counter=0;
-    PORTK |= (1 << PORTK1);
 
     if(USART3_write_byte(byte) > 0 )
     {
-        PORTK ^= (1 << PORTK2);
         return ERROR;
     }
-    PORTK ^= (1 << PORTK3);
     return SUCCESS;
 }
 
@@ -101,10 +90,21 @@ void halWT41FcUart_Receive(uint8_t byte)
 
     wt41_receive_buffer[wt41_write_index] = byte;
     wt41_buffer_space--;
-    wt41_write_index++;
-    wt41_write_index = (wt41_write_index) % HAL_WT41_BUFFER_SIZE;
-
+    if(wt41_write_index +1 >=HAL_WT41_BUFFER_SIZE)
+    {
+        wt41_write_index=0;
+    }
+    else
+    {
+        wt41_write_index++;
+    }
+    
     sei();
+
+    if (wt41_buffer_space <= HAL_WT41_FLOW_CONTROL_SET)
+    {
+        USART3_set_flow_control();
+    }
 
     if(recv_flag)
     {
@@ -132,10 +132,8 @@ void halWT41FcUart_Receive(uint8_t byte)
 
         wt41_read_index = (1+wt41_read_index) % HAL_WT41_BUFFER_SIZE;
     }
-    PORTH = wt41_write_index;
 
     recv_flag = 0x00;
-    PORTK ^= (1 << PORTK6);
 }
 
 uint8_t halWT41FcUart_get_free_buffer_space(void)

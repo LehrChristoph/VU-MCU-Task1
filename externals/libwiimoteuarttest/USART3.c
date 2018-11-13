@@ -198,6 +198,8 @@ uint16_t USART3_get_free_buffer_space(void)
 
 void USART3_set_flow_control(void)
 {
+    uint8_t static counter = 0;
+    PORTL = ++counter;
     USART3_PORT_FC |= (1 << USART3_CTS_FC );
 }
 
