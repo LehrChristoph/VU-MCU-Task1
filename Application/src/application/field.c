@@ -29,6 +29,7 @@ void field_update_positions(void);
 void field_update_ball_position(uint8_t y_shift);
 void field_draw_barrier(field_barrier barrier, uint8_t y_shift);
 void field_update_glcd(void);
+void field_display_new_game(void);
 
 static uint8_t field_cyclic_task_id = 0xFF;
 
@@ -50,7 +51,7 @@ const char game_over_message[] PROGMEM = "GAME OVER";
 const char connect_message[] PROGMEM = "CONNECTING TO:";
 const char mac_address_format[] PROGMEM = "%02X:%02X:%02X:%02X:%02X:%02X";
 const char ready_to_start_message[] PROGMEM = "Ready to Start";
-const char press_a_message[] PROGMEM = "Press A";
+const char press_a_message[] PROGMEM = "New Game: Press A";
 
 static uint16_t current_score;
 static uint8_t score_postion;
@@ -75,6 +76,13 @@ void field_init(void)
 
     field_current_game_state = GAME_IDLE;
 
+    field_reset_field();
+
+    field_cyclic_task_id =  Tasker_add_task(0x01, field_cyclic_task, 10);
+}
+
+void field_reset_field(void)
+{
     field_ball_center_current.x = FIELD_BALL_INIT_POSITION;
     field_ball_center_current.y = FIELD_GLCD_HEIGTH - FIELD_BALL_RADIUS -2;
     field_ball_bottom_current.x = FIELD_BALL_INIT_POSITION;
@@ -93,8 +101,6 @@ void field_init(void)
         field_barriers_current[field_barrier_index].glcd_position = FIELD_GLCD_HEIGTH-1;
         field_barriers_current[field_barrier_index].seed = 0xFF;
     }
-
-    field_cyclic_task_id =  Tasker_add_task(0x01, field_cyclic_task, 10);
 }
 
 void field_updated_local_game_state(game_state_t new_game_state)
@@ -154,16 +160,19 @@ void field_display_end(void)
     if(! already_displayed)
     {
         glcdSetYShift(0);
+        glcdFillScreen(GLCD_CLEAR);
+
         xy_point message_point ;
         message_point.x = FIELD_GAME_OVER_STRING_POSITION_X;
         message_point.y = FIELD_STRING_POSITION_Y;
-        glcdFillScreen(GLCD_CLEAR);
         glcdDrawTextPgm(game_over_message, message_point, &Standard5x7, glcdSetPixel);
 
         score_t new_score;
         new_score.score = current_score;
         score_postion = ScoreBoard_new_score(new_score);
         ScoreBoard_display(score_postion);
+
+        field_display_new_game();
 
         already_displayed = 0xFF;
     }
@@ -212,11 +221,15 @@ void field_display_ready_to_start(void)
     message_point.x = 20;
     message_point.y = 50;
     glcdDrawTextPgm(ready_to_start_message, message_point, &Standard5x7, glcdSetPixel);
+    field_display_new_game();
+}
 
-    message_point.x = 35;
-    message_point.y = 58;
+void field_display_new_game(void)
+{
+    xy_point message_point ;
+    message_point.x = 12;
+    message_point.y = 63;
     glcdDrawTextPgm(press_a_message, message_point, &Standard5x7, glcdSetPixel);
-
 }
 
 void field_display_error(uint8_t error_code)

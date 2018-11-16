@@ -28,7 +28,7 @@
 #endif
 
 #ifndef FIELD_STRING_POSITION_Y
-    #define FIELD_STRING_POSITION_Y 10
+    #define FIELD_STRING_POSITION_Y 9
 #endif
 
 #ifndef FIELD_TITLE_STRING_POSITION_X
@@ -72,5 +72,7 @@ void field_display_connect(uint8_t *mac_address);
 void field_display_error(uint8_t error_code);
 
 void field_display_ready_to_start(void);
+
+void field_reset_field(void);
 
 #endif
