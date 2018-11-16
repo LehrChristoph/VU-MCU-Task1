@@ -15,7 +15,7 @@
 #endif
 
 #ifndef SCORE_BOARD_BOTOM
-    #define SCORE_BOARD_BOTOM 60
+    #define SCORE_BOARD_BOTOM 54
 #endif
 
 #ifndef SCORE_BOARD_ENTRY_IVERVAL

@@ -74,10 +74,10 @@ void ScoreBoard_display(uint8_t highlight_entry)
         {
             xy_point left_bottom, right_top;
 
-            left_bottom.y = score_position.y -1;
+            left_bottom.y = score_position.y ;
             left_bottom.x = 0;
 
-            right_top.y = left_bottom.y + SCORE_BOARD_ENTRY_IVERVAL;
+            right_top.y = left_bottom.y - SCORE_BOARD_ENTRY_IVERVAL +1;
             right_top.x = 127;
 
             glcdFillRect(left_bottom, right_top, glcdSetPixel);
@@ -88,6 +88,6 @@ void ScoreBoard_display(uint8_t highlight_entry)
             glcdDrawText(score_output, score_position, &Standard5x7, glcdSetPixel);
         }
 
-        score_position.y += SCORE_BOARD_ENTRY_IVERVAL;
+        score_position.y -= SCORE_BOARD_ENTRY_IVERVAL;
     }
 }
