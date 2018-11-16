@@ -29,6 +29,7 @@ void game_start_adc(void);
 static uint8_t game_task_id_cyclic_task =-1;
 static uint8_t game_task_id_adc_task =-1;
 static game_state_t game_state = GAME_IDLE;
+static uint8_t accl_setup = 0x00;
 
 void game_init(void)
 {
@@ -46,7 +47,7 @@ void game_init(void)
     ADC_enable_interrupt();
 
     game_task_id_adc_task =  Tasker_add_task(0x01, game_start_adc, 50);
-
+    accl_setup = 0x00;
 }
 
 void game_start_adc(void)
@@ -117,10 +118,14 @@ void game_controls_connect_callback(void)
 
 void game_button_callback(void)
 {
+    field_reset_field();
     controls_clear_button_press_callback(CONTROLS_BUTTON_A);
     field_updated_local_game_state(GAME_PLAYING);
     sound_start_playing_theme();
-    controls_EnableAccl();
+    if( ! accl_setup){
+        controls_EnableAccl();
+        accl_setup = 0xFF;
+    }
     game_state = GAME_PLAYING;
 }
 
@@ -141,6 +146,7 @@ void game_set_state(game_state_t new_game_state)
             break;
         case GAME_OVER:
             sound_play_game_over();
+            controls_set_button_press_callback(CONTROLS_BUTTON_A, game_button_callback);
             break;
     }
 }
