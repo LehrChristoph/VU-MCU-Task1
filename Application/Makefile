@@ -19,15 +19,17 @@ SRCS	   += $(wildcard $(SRC_DIR)/basics/*.c)
 SRCS	   += $(wildcard $(SRC_DIR)/drivers/*.c)
 SRCS	   += $(wildcard $(SRC_DIR)/modules/*.c)
 SRCS	   += $(wildcard $(SRC_DIR)/application/*.c)
+SRCS	   += $(wildcard $(SRC_DIR)/application/wiimote/*.c)
+
 
 OBJECTS     = $(SRCS:$(SRC_DIR)%.c=$(OBJ_DIR)%.o)
 LIBOBJECTS  =
 
-INCLUDES	= $(SRC_DIR) $(SRC_DIR)/application $(SRC_DIR)/basics $(SRC_DIR)/drivers $(SRC_DIR)/modules $(INC_DIR)
+INCLUDES	= $(dir $(SRCS)) $(INC_DIR)
 LIB_DIRS	= $(OBJ_DIR)/avr_libs $(LIB_DIR)
 LIBS 		= glcd
 
-DEFINES		= F_CPU=$(CLOCK)
+DEFINES		= F_CPU=$(CLOCK) LCD_MODULE_WH1602B USART3_ENABLE_FLOW_CONTROL
 
 MCU         = atmega1280
 
@@ -56,7 +58,6 @@ $(OBJ_DIR):
 	mkdir -p $(dir $(OBJECTS))
 
 install: $(FILENAME).elf
-	make all
 	$(PROG) $(PRFLAGS) --flash w:$<
 
 verify: $(FILENAME).elf

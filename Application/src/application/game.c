@@ -16,12 +16,15 @@
 
 #include "application/field.h"
 #include "application/sound.h"
+#include "application/controls.h"
+
+void game_controls_connect_callback(void);
+void game_button_callback(void);
 
 adc_mode_t current_adc_mode = ADC_MODE_INIT_LFSR;
 
 void game_ADC_callback(uint16_t adc_val);
 void game_start_adc(void);
-void game_cyclic_check(void);
 
 static uint8_t game_task_id_cyclic_task =-1;
 static uint8_t game_task_id_adc_task =-1;
@@ -30,9 +33,9 @@ static game_state_t game_state = GAME_IDLE;
 void game_init(void)
 {
     game_state = GAME_IDLE;
-
-    sound_init();
     field_init();
+    sound_init();
+    controls_init();
 
     //setup ADC
     ADC_select_channel(ADC_CHANNEL_DIFFERENTIAL_ADC3_ADC2_GAIN_200X);
@@ -42,25 +45,22 @@ void game_init(void)
     ADC_set_callback(&game_ADC_callback);
     ADC_enable_interrupt();
 
-    game_task_id_adc_task =  Tasker_add_task(0x01, game_start_adc, 10);
+    game_task_id_adc_task =  Tasker_add_task(0x01, game_start_adc, 50);
 
 }
 
 void game_start_adc(void)
 {
-
     ADC_enable();
     ADC_start_conversion();
 }
 
 void game_ADC_callback(uint16_t adc_val)
 {
-
     if( current_adc_mode == ADC_MODE_INIT_LFSR)
     {
         current_adc_mode = ADC_MODE_NEXT_VOLUME;
         ADC_select_channel(ADC_CHANNEL_ADC0);
-
         rand_init(adc_val);
     }
     // throw away first conversion for volume
@@ -75,8 +75,9 @@ void game_ADC_callback(uint16_t adc_val)
         ADC_select_channel(ADC_CHANNEL_DIFFERENTIAL_ADC3_ADC2_GAIN_200X);
         // shift out lowest 2 bit, not relevant
         uint8_t temp = (adc_val >> 2);
+        sei();
         sound_add_volume_val(temp);
-        ADC_disable();
+        ADC_start_conversion();
     }
     // throw away first conversion for lfrs
     else if(current_adc_mode == ADC_MODE_NEXT_LFSR)
@@ -90,6 +91,7 @@ void game_ADC_callback(uint16_t adc_val)
         ADC_select_channel(ADC_CHANNEL_ADC0);
         uint8_t temp = adc_val & 0xFF;
         // not interested in shifted out bit
+        sei();
         (void) rand_shift(temp);
         ADC_disable();
     }
@@ -103,8 +105,24 @@ void game_start(void)
     game_state = GAME_STARTUP;
     // play startup theme
     sound_start_playing_startup();
+    // connect to wii mote and set up
+    controls_connect(game_controls_connect_callback);
 }
 
+void game_controls_connect_callback(void)
+{
+    field_display_ready_to_start();
+    controls_set_button_press_callback(CONTROLS_BUTTON_A, game_button_callback);
+}
+
+void game_button_callback(void)
+{
+    controls_clear_button_press_callback(CONTROLS_BUTTON_A);
+    field_updated_local_game_state(GAME_PLAYING);
+    sound_start_playing_theme();
+    controls_EnableAccl();
+    game_state = GAME_PLAYING;
+}
 
 void game_set_state(game_state_t new_game_state)
 {
@@ -125,10 +143,4 @@ void game_set_state(game_state_t new_game_state)
             sound_play_game_over();
             break;
     }
-}
-
-void game_cyclic_check(void)
-{
-
-
 }

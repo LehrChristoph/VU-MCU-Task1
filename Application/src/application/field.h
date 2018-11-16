@@ -16,7 +16,7 @@
 #endif
 
 #ifndef FIELD_DEFAULT_SPEED
-    #define FIELD_DEFAULT_SPEED 25
+    #define FIELD_DEFAULT_SPEED 10
 #endif
 
 #ifndef FIELD_BALL_RADIUS
@@ -28,7 +28,7 @@
 #endif
 
 #ifndef FIELD_STRING_POSITION_Y
-    #define FIELD_STRING_POSITION_Y 32
+    #define FIELD_STRING_POSITION_Y 10
 #endif
 
 #ifndef FIELD_TITLE_STRING_POSITION_X
@@ -51,20 +51,26 @@
     #define FIELD_BALL_INIT_POSITION 64
 #endif
 
+#define ERROR_WII_INIT      1
+#define ERROR_WII_CONNECT   2
+#define ERROR_WII_SET_LEDS  3
+#define ERROR_WII_SET_ACCL  4
+
 typedef struct __field_barrier
 {
     uint16_t seed;
     uint8_t glcd_position;
 } field_barrier;
 
-typedef enum {
-	FIELD_DISPLAY_READY,
-    FIELD_ALREADY_DISPLAYED,
-} display_state_t;
-
 
 void field_init(void);
 
 void field_updated_local_game_state(game_state_t new_game_state);
+
+void field_display_connect(uint8_t *mac_address);
+
+void field_display_error(uint8_t error_code);
+
+void field_display_ready_to_start(void);
 
 #endif

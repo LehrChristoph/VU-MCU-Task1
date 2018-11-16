@@ -6,7 +6,7 @@
 #include "util.h"
 
 #ifndef HAL_WT41_BUFFER_SIZE
-    #define HAL_WT41_BUFFER_SIZE 48
+    #define HAL_WT41_BUFFER_SIZE 32
 #endif
 
 // Flow control will be set if free space is lower or equla then that value

@@ -29,14 +29,15 @@ void spiSend(uint8_t data)
     SPCR |=  (1 << MSTR );
     // wait until transfer is completed
     while((SPSR & (1<<SPIF)) == 0);
-
 }
 
 uint8_t spiReceive(void)
 {
+
     // send dummy byte
     SPDR = 0xFF;
     // wait until transfer is completed
+
     while(!(SPSR & (1<<SPIF) ));
     // return received data
     return SPDR;

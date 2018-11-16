@@ -59,7 +59,6 @@ error_t halWT41FcUartInit(void (*sndCallback)(), void (*rcvCallback)(uint8_t))
     halWT41_send_callback = sndCallback;
     USART3_enable_receiver(halWT41FcUart_Receive);
 
-    PORTK ^= (1 << PORTK0);
     recv_flag= 0x00;
     return SUCCESS;
 }
@@ -74,8 +73,6 @@ void halWT41FcUart_timer_callback(void)
 
 error_t halWT41FcUartSend(uint8_t byte)
 {
-    static uint8_t send_counter=0;
-
     if(USART3_write_byte(byte) > 0 )
     {
         return ERROR;
@@ -85,23 +82,28 @@ error_t halWT41FcUartSend(uint8_t byte)
 
 void halWT41FcUart_Receive(uint8_t byte)
 {
-
+    uint8_t buffer_space;
     wt41_receive_buffer[wt41_write_index] = byte;
-    wt41_buffer_space--;
-    wt41_write_index++;
-    wt41_write_index = (wt41_write_index) % HAL_WT41_BUFFER_SIZE;
+    if(wt41_write_index +1 >=HAL_WT41_BUFFER_SIZE)
+    {
+        wt41_write_index=0;
+    }
+    else
+    {
+        wt41_write_index++;
+    }
 
-    sei();
-
-    if (wt41_buffer_space <= HAL_WT41_FLOW_CONTROL_SET)
+    buffer_space = halWT41FcUart_get_free_buffer_space();
+    if (buffer_space <= HAL_WT41_FLOW_CONTROL_SET)
     {
         USART3_set_flow_control();
     }
-    
+
     if(recv_flag)
     {
         return;
     }
+
 
     recv_flag = 0xFF;
 
@@ -118,16 +120,24 @@ void halWT41FcUart_Receive(uint8_t byte)
         }
 
         uint8_t temp = wt41_receive_buffer[wt41_read_index];
+        sei();
         (*halWT41_receive_callback)(temp);
+        cli();
 
-        wt41_buffer_space++;
+        if(wt41_read_index +1 >=HAL_WT41_BUFFER_SIZE)
+        {
+            wt41_read_index=0;
+        }
+        else
+        {
+            wt41_read_index++;
+        }
 
-        wt41_read_index = (1+wt41_read_index) % HAL_WT41_BUFFER_SIZE;
+        wt41_buffer_space = halWT41FcUart_get_free_buffer_space();
     }
-    PORTH = wt41_write_index;
 
     recv_flag = 0x00;
-    PORTK ^= (1 << PORTK6);
+    sei();
 }
 
 uint8_t halWT41FcUart_get_free_buffer_space(void)

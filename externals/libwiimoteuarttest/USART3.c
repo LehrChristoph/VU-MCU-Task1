@@ -95,13 +95,13 @@ void USART3_disable_receiver(void)
 
 void USART3_enable_transmitter(void (*callback)(void))
 {
-    UCSR3B |= (1 << TXEN3);
+    UCSR3B |= (1 << TXEN3 | 1 << TXCIE3);
     usart3_transmitter_callback = callback;
 }
 
 void USART3_disable_transmitter(void)
 {
-    UCSR3B &= ~(1 << TXEN3);
+    UCSR3B &= ~(1 << TXEN3 | 1 << TXCIE3);
     usart3_transmitter_callback=NULL;
 }
 
@@ -115,7 +115,7 @@ uint8_t USART3_write_byte(uint8_t data_byte)
             {
                 usart3_write_index = (1+usart3_write_index) % USART3_BUFFER_SIZE;
                 UDR3 = data_byte;
-                UCSR3B |= (1 << UDRIE3);
+                // UCSR3B |= (1 << UDRIE3);
             }
             else
             {
@@ -158,10 +158,10 @@ uint8_t USART3_write_string(char *data_string, uint16_t length)
                 usart3_write_index += length;
             }
 
-            if (usart3_read_index == usart3_write_index_old &&  usart3_mode == USART3_SEND_ENABLED)
-            {
-                UCSR3B |= (1 << UDRIE3);
-            }
+            // if (usart3_read_index == usart3_write_index_old &&  usart3_mode == USART3_SEND_ENABLED)
+            // {
+            //     UCSR3B |= (1 << UDRIE3);
+            // }
         }
         return 0;
     }
@@ -198,8 +198,6 @@ uint16_t USART3_get_free_buffer_space(void)
 
 void USART3_set_flow_control(void)
 {
-    uint8_t static counter = 0;
-    PORTL = ++counter;
     USART3_PORT_FC |= (1 << USART3_CTS_FC );
 }
 
@@ -226,7 +224,7 @@ void USART3_pin_change_callback(void)
             usart3_read_index = (1+usart3_read_index) % USART3_BUFFER_SIZE;
 
             // enable interrupt again
-            UCSR3B |= (1 << UDRIE3);
+            // UCSR3B |= (1 << UDRIE3);
         }
     }
 }
@@ -239,26 +237,50 @@ ISR(USART3_RX_vect)
     (*usart3_receiver_callback)(data);
 }
 
-ISR(USART3_UDRE_vect)
+// ISR(USART3_UDRE_vect)
+// {
+//
+//     uint16_t usart3_read_index_temp = usart3_read_index;
+//
+//     usart3_read_index = (1+usart3_read_index) % USART3_BUFFER_SIZE;
+//
+//     if (usart3_read_index == usart3_write_index || usart3_mode == USART3_DISABLE_SEND)
+//     {
+//         // nothing to send left
+//         UCSR3B &= ~(1 << UDRIE3);
+//
+//         if (usart3_mode == USART3_DISABLE_SEND)
+//         {
+//             usart3_mode = USART3_SEND_DISABLED;
+//         }
+//     }
+//     else
+//     {
+//         UDR3 = *usart3_send_buffer[usart3_read_index_temp];
+//     }
+//
+//     if (usart3_transmitter_callback != NULL)
+//     {
+//         (*usart3_transmitter_callback)();
+//     }
+// }
+
+ISR(USART3_TX_vect)
 {
 
     uint16_t usart3_read_index_temp = usart3_read_index;
 
     usart3_read_index = (1+usart3_read_index) % USART3_BUFFER_SIZE;
 
-    if (usart3_read_index == usart3_write_index || usart3_mode == USART3_DISABLE_SEND)
+    if (usart3_mode == USART3_DISABLE_SEND)
     {
-        // nothing to send left
-        UCSR3B &= ~(1 << UDRIE3);
-
         if (usart3_mode == USART3_DISABLE_SEND)
         {
             usart3_mode = USART3_SEND_DISABLED;
         }
     }
-    else
+    else if(usart3_read_index != usart3_write_index)
     {
-        PORTK = *usart3_send_buffer[usart3_read_index_temp];
         UDR3 = *usart3_send_buffer[usart3_read_index_temp];
     }
 
