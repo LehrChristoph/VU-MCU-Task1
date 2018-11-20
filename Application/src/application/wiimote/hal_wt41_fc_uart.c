@@ -35,7 +35,7 @@ volatile uint8_t recv_flag ;
 
 static uint8_t timer_task_id=0xff;
 
-error_t halWT41FcUartInit(void (*sndCallback)(), void (*rcvCallback)(uint8_t))
+error_t halWT41FcUartInit(void (*sndCallback)(void), void (*rcvCallback)(uint8_t))
 {
     DDRJ |= (1 << PORTJ5);
     PORTJ &= ~(1 << PORTJ5);
