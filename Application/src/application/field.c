@@ -261,7 +261,7 @@ void field_display_new_game(void)
 
 void field_display_error(uint8_t error_code)
 {
-    PORTK = error_code;
+
 }
 
 void field_update_positions(void)
@@ -460,7 +460,6 @@ void field_update_ball_position(uint8_t y_shift)
         {
 
             uint8_t new_pos = field_ball_bottom_current.x + abs(deviation);
-            PORTL = new_pos;
 
             if(new_pos >= FIELD_GLCD_WIDTH)
             {
@@ -476,7 +475,7 @@ void field_update_ball_position(uint8_t y_shift)
         else if(deviation < 0)
         {
             int8_t new_pos = field_ball_bottom_current.x + deviation;
-            PORTK = abs(new_pos);
+
             if(new_pos <= FIELD_BALL_RADIUS)
             {
                 field_ball_bottom_current.x = FIELD_BALL_RADIUS+1;
