@@ -11,6 +11,14 @@
 #include <avr/io.h>
 #include "game.h"
 
+#define ERROR_WII_INIT      0
+#define ERROR_WII_CONNECT   1
+#define ERROR_WII_SET_LEDS  2
+#define ERROR_WII_SET_ACCL  3
+#define ERROR_NO_CARD       4
+#define ERROR_SD_TIMEOUT    5
+#define ERROR_UNKNOWN_CARD  6
+#define ERROR_SD_GENERAL    7
 
 #ifndef FIELD_DEFAULT_SPEED
     #define FIELD_DEFAULT_SPEED 30
@@ -68,10 +76,6 @@
     #define FIELD_BALL_INIT_POSITION FIELD_GLCD_WIDTH/2
 #endif
 
-#define ERROR_WII_INIT      1
-#define ERROR_WII_CONNECT   2
-#define ERROR_WII_SET_LEDS  3
-#define ERROR_WII_SET_ACCL  4
 
 typedef struct __field_barrier
 {
