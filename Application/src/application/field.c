@@ -269,7 +269,15 @@ void field_display_new_game(void)
 
 void field_display_error(uint8_t error_code)
 {
+    glcdFillScreen(GLCD_CLEAR);
+    
+    xy_point message_point ;
+    message_point.x = 2;
+    message_point.y = 30;
 
+    glcdDrawTextPgm((char*)pgm_read_word(&(error_table[error_code])), message_point, &Standard5x7, glcdSetPixel);
+
+    game_set_state(GAME_ERROR);
 }
 
 void field_update_positions(void)
