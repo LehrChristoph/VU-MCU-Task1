@@ -157,6 +157,10 @@ void game_set_state(game_state_t new_game_state)
             break;
         case GAME_DISPLAY_SB:
             break;
+        case GAME_ERROR:
+            // error occured block here
+            while(1);
+            break;
     }
 }
 

@@ -152,6 +152,8 @@ void field_cyclic_task(void)
         case GAME_DISPLAY_SB:
             field_display_SB();
             break;
+        case GAME_ERROR:
+            break;
     }
 }
 
