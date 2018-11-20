@@ -14,6 +14,7 @@
 
 #include "USART3.h"
 #include "Timer1.h"
+#include "modules/Tasker.h"
 
 // Functions declarations
 void halWT41FcUart_Receive(uint8_t byte);
@@ -32,16 +33,14 @@ volatile uint8_t wt41_receive_buffer[HAL_WT41_BUFFER_SIZE];
 volatile uint8_t wt41_buffer_space;
 volatile uint8_t recv_flag ;
 
-error_t halWT41FcUartInit(void (*sndCallback)(), void (*rcvCallback)(uint8_t))
+static uint8_t timer_task_id=0xff;
+
+error_t halWT41FcUartInit(void (*sndCallback)(void), void (*rcvCallback)(uint8_t))
 {
     DDRJ |= (1 << PORTJ5);
     PORTJ &= ~(1 << PORTJ5);
 
-    timer1_set_prescaler(TIMER1_PRESCALER_64);
-    timer1_set_waveform_generation_mode(TIMER1_CTC_MODE_TOP_OCR1A);
-    timer1_activate_output_A(TIMER1_CTC_NO_PORT_OPERATION);
-    timer1_set_output_compare_A(1250);
-    timer1_enable_output_compare_interrupt_A(halWT41FcUart_timer_callback);
+    timer_task_id = Tasker_add_task(0x30, halWT41FcUart_timer_callback, 50);
 
     USART3_inits(USART3_BAUDRATE_1_M,
                  USART3_STOP_BITS_1,
@@ -63,6 +62,8 @@ error_t halWT41FcUartInit(void (*sndCallback)(), void (*rcvCallback)(uint8_t))
 
 void halWT41FcUart_timer_callback(void)
 {
+    (void)Tasker_stop_task(timer_task_id);
+
     USART3_enable_transmitter(halWT41_send_callback);
     USART3_clear_flow_control();
     PORTJ |= (1 << PORTJ5);

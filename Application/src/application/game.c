@@ -22,13 +22,11 @@
 void game_controls_connect_callback(void);
 void game_button_callback(void);
 void game_name_finished_callback(void);
-
-adc_mode_t current_adc_mode = ADC_MODE_INIT_LFSR;
-
 void game_ADC_callback(uint16_t adc_val);
 void game_start_adc(void);
 
-static uint8_t game_task_id_cyclic_task =-1;
+adc_mode_t current_adc_mode = ADC_MODE_INIT_LFSR;
+
 static uint8_t game_task_id_adc_task =-1;
 static game_state_t game_state = GAME_IDLE;
 static uint8_t accl_setup = 0x00;
@@ -60,6 +58,7 @@ void game_start_adc(void)
 
 void game_ADC_callback(uint16_t adc_val)
 {
+    // init LFSR
     if( current_adc_mode == ADC_MODE_INIT_LFSR)
     {
         current_adc_mode = ADC_MODE_NEXT_VOLUME;
@@ -163,12 +162,13 @@ void game_set_state(game_state_t new_game_state)
 
 void game_name_finished_callback(void)
 {
-
+    // deactivate callbacks
     controls_clear_button_press_callback(CONTROLS_BUTTON_D_UP);
     controls_clear_button_press_callback(CONTROLS_BUTTON_D_DOWN);
     controls_clear_button_press_callback(CONTROLS_BUTTON_D_LEFT);
     controls_clear_button_press_callback(CONTROLS_BUTTON_D_RIGHT);
     controls_set_button_press_callback(CONTROLS_BUTTON_A, game_button_callback);
+    // store player name
     ScoreBoard_store_player_name();
     game_set_state(GAME_DISPLAY_SB);
 }
