@@ -22,13 +22,11 @@
 void game_controls_connect_callback(void);
 void game_button_callback(void);
 void game_name_finished_callback(void);
-
-adc_mode_t current_adc_mode = ADC_MODE_INIT_LFSR;
-
 void game_ADC_callback(uint16_t adc_val);
 void game_start_adc(void);
 
-static uint8_t game_task_id_cyclic_task =-1;
+adc_mode_t current_adc_mode = ADC_MODE_INIT_LFSR;
+
 static uint8_t game_task_id_adc_task =-1;
 static game_state_t game_state = GAME_IDLE;
 static uint8_t accl_setup = 0x00;
