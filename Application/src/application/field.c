@@ -66,13 +66,22 @@ const char wiimote_connect_error[] PROGMEM = "WiiUserConnect Error";
 const char wiimote_setLeds_error[] PROGMEM = "WiiUserSetLeds Error";
 const char wiimote_setAccl_error[] PROGMEM = "WiiUserSetAccl Error";
 
-// const PGM_P error_table[4] PROGMEM =
-// {
-//     wiimote_init_error,
-//     wiimote_connect_error,
-//     wiimote_setLeds_error,
-//     wiimote_setAccl_error
-// };
+const char sd_card_no_card_error[] PROGMEM = "No SD Card Error ";
+const char sd_card_timeout_error[] PROGMEM = "SD Card Timeout Error";
+const char sd_card_unknown_card_error[] PROGMEM = "Unknown SD Card Error";
+const char sd_card_general_error[] PROGMEM = "General SD Card Error";
+
+const char * const error_table[] PROGMEM =
+{
+    wiimote_init_error,
+    wiimote_connect_error,
+    wiimote_setLeds_error,
+    wiimote_setAccl_error,
+    sd_card_no_card_error,
+    sd_card_timeout_error,
+    sd_card_unknown_card_error,
+    sd_card_general_error
+};
 
 void field_init(void)
 {
