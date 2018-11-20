@@ -13,7 +13,15 @@
 
 
 #ifndef FIELD_DEFAULT_SPEED
-    #define FIELD_DEFAULT_SPEED 15
+    #define FIELD_DEFAULT_SPEED 30
+#endif
+
+#ifndef FIELD_SPEED_INCREASE_INTERVAL
+    #define FIELD_SPEED_INCREASE_INTERVAL 10
+#endif
+
+#ifndef FIELD_MIN_SPEED
+    #define FIELD_MIN_SPEED 5
 #endif
 
 #ifndef FIELD_BALL_RADIUS

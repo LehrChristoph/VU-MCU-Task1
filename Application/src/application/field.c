@@ -81,7 +81,7 @@ void field_init(void)
 
     field_reset_field();
 
-    field_cyclic_task_id =  Tasker_add_task(0x01, field_cyclic_task, 10);
+    field_cyclic_task_id =  Tasker_add_task(0x01, field_cyclic_task, 5);
 }
 
 void field_reset_field(void)
@@ -268,7 +268,7 @@ void field_update_positions(void)
 {
     static uint16_t game_counter = 0;
     static uint8_t line_counter =0;
-
+    static uint8_t speed_counter =0;
     if(game_counter == 0)
     {
         current_score++;
@@ -289,6 +289,12 @@ void field_update_positions(void)
             field_draw_barrier(field_barriers_current[field_barrier_index], y_shift);
 
             field_barrier_index = (field_barrier_index+1)%8;
+
+            if( speed_counter >= FIELD_SPEED_INCREASE_INTERVAL && game_speed > FIELD_MIN_SPEED)
+            {
+                game_speed--;
+            }
+            speed_counter++;
         }
 
         field_update_ball_position(y_shift);
