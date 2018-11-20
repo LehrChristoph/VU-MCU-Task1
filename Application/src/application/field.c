@@ -24,7 +24,6 @@
 // functions definitions
 void field_cyclic_task(void);
 void field_display_start_screen(void);
-void field_display_game(void);
 void field_display_end(void);
 void field_update_positions(void);
 void field_update_ball_position(uint8_t y_shift);
@@ -32,6 +31,9 @@ void field_draw_barrier(field_barrier barrier, uint8_t y_shift);
 void field_update_glcd(void);
 void field_display_new_game(void);
 void field_display_SB(void);
+uint8_t field_check_bottom_collision(uint8_t colision_left, uint8_t collision_right, field_barrier barrier);
+uint8_t field_check_side_collision(uint8_t collision_left, uint8_t collision_right, field_barrier barrier);
+void filed_add_deviation(int8_t deviation);
 
 static uint8_t field_cyclic_task_id = 0xFF;
 
@@ -130,7 +132,7 @@ void field_cyclic_task(void)
             field_display_start_screen();
             break;
     	case GAME_PLAYING:
-            field_display_game();
+            field_update_positions();
             already_displayed = 0x00;
             break;
         case GAME_OVER:
@@ -157,11 +159,6 @@ void field_display_start_screen(void)
 
         already_displayed = 0xFF;
     }
-}
-
-void field_display_game(void)
-{
-    field_update_positions();
 }
 
 void field_display_end(void)
@@ -321,8 +318,6 @@ void field_update_ball_position(uint8_t y_shift)
     glcdDrawCircle(draw_point, FIELD_BALL_RADIUS, glcdClearPixel);
     int8_t deviation = controls_get_deviation();
 
-    uint8_t start_x=0, end_x=FIELD_BARRIER_BLOCK_WIDTH-1;
-
     uint8_t collision_left = field_ball_bottom_current.x;
     uint8_t collision_right = field_ball_bottom_current.x;
 
@@ -380,73 +375,14 @@ void field_update_ball_position(uint8_t y_shift)
         if(field_barriers_current[i].glcd_position-1 == field_ball_bottom_current.y ||
            field_barriers_current[i].glcd_position   == field_ball_bottom_current.y)
         {
-            uint16_t seed = field_barriers_current[i].seed;
+            y_blocked = field_check_bottom_collision(collision_left, collision_right, field_barriers_current[i]);
 
-            for(uint8_t j=0; j<16; j++)
-            {
-
-                // check if something left or right of center is coliding
-                if((collision_left <= end_x && field_ball_bottom_current.x >= end_x) ||
-                    (collision_right >= start_x && field_ball_bottom_current.x <= start_x))
-                {
-                    // only break loop if coliding
-                    if((seed & 0x1) > 0)
-                    {
-                        y_blocked = 0xFF;
-                        field_ball_bottom_current.y=field_barriers_current[i].glcd_position-1;
-                        field_ball_center_current.y=field_barriers_current[i].glcd_position-FIELD_BALL_RADIUS-1;
-                        break;
-                    }
-                }
-                //check if center is coliding
-                else if(field_ball_bottom_current.x >= start_x && field_ball_bottom_current.x <= end_x)
-                {
-                    if((seed & 0x1) > 0)
-                    {
-                        y_blocked = 0xFF;
-                        field_ball_bottom_current.y=field_barriers_current[i].glcd_position-1;
-                        field_ball_center_current.y=field_barriers_current[i].glcd_position-FIELD_BALL_RADIUS-1;
-                    }
-                    break;
-                }
-
-                start_x += FIELD_BARRIER_BLOCK_WIDTH;
-                end_x += FIELD_BARRIER_BLOCK_WIDTH;
-                seed = (seed >> 1);
-            }
         }
         // check if colision is left or right
         if(field_ball_center_current.y - FIELD_BALL_RADIUS <= field_barriers_current[i].glcd_position &&
            field_ball_center_current.y + FIELD_BALL_RADIUS >= field_barriers_current[i].glcd_position)
         {
-            uint16_t seed = field_barriers_current[i].seed;
-
-            for(uint8_t j=0; j<16; j++)
-            {
-                // check if something is on the left side of the ball
-                if(collision_right > end_x && collision_right < end_x + FIELD_BARRIER_BLOCK_WIDTH
-                   // check if current block is a hole and if the right block is a barrier
-                   && ((seed >> i) & 0x1) == 0 && ((seed >> (j+1) )& 0x1) == 1) //
-                {
-                    field_ball_bottom_current.x = end_x - FIELD_BALL_RADIUS;
-                    field_ball_center_current.x = end_x - FIELD_BALL_RADIUS;
-                    x_blocked = 0xFF;
-
-                    break;
-                }
-                else if(collision_left < start_x && collision_left > start_x - FIELD_BARRIER_BLOCK_WIDTH
-                        // check if current block is a hole and if the left block is a barrier
-                        && ((seed >> i) & 0x1) == 0 && ((seed >> (j-1)) & 0x1) == 1) //
-                {
-                    field_ball_bottom_current.x = start_x + FIELD_BALL_RADIUS;
-                    field_ball_center_current.x = start_x + FIELD_BALL_RADIUS;
-                    x_blocked = 0xFF;
-                    break;
-                }
-
-                start_x += FIELD_BARRIER_BLOCK_WIDTH;
-                end_x += FIELD_BARRIER_BLOCK_WIDTH;
-            }
+            x_blocked = field_check_side_collision(collision_left, collision_right, field_barriers_current[i]);
         }
         if (x_blocked || y_blocked)
         {
@@ -456,37 +392,7 @@ void field_update_ball_position(uint8_t y_shift)
 
     if(! x_blocked)
     {
-        if(deviation >0)
-        {
-
-            uint8_t new_pos = field_ball_bottom_current.x + abs(deviation);
-
-            if(new_pos >= FIELD_GLCD_WIDTH)
-            {
-                field_ball_bottom_current.x = FIELD_GLCD_WIDTH-FIELD_BALL_RADIUS-2;
-                field_ball_center_current.x = FIELD_GLCD_WIDTH-FIELD_BALL_RADIUS-2;
-            }
-            else
-            {
-                field_ball_bottom_current.x += deviation;
-                field_ball_center_current.x += deviation;
-            }
-        }
-        else if(deviation < 0)
-        {
-            int8_t new_pos = field_ball_bottom_current.x + deviation;
-
-            if(new_pos <= FIELD_BALL_RADIUS)
-            {
-                field_ball_bottom_current.x = FIELD_BALL_RADIUS+1;
-                field_ball_center_current.x = FIELD_BALL_RADIUS+1;
-            }
-            else
-            {
-                field_ball_bottom_current.x += deviation;
-                field_ball_center_current.x += deviation;
-            }
-        }
+        filed_add_deviation(deviation);
     }
 
     if(!y_blocked && field_ball_bottom_current.y < FIELD_GLCD_HEIGTH -2 )
@@ -506,6 +412,110 @@ void field_update_ball_position(uint8_t y_shift)
     glcdDrawCircle(draw_point, FIELD_BALL_RADIUS, glcdSetPixel);
 }
 
+uint8_t field_check_bottom_collision(uint8_t collision_left, uint8_t collision_right, field_barrier barrier)
+{
+    uint8_t start_x=0, end_x=FIELD_BARRIER_BLOCK_WIDTH-1;
+    uint16_t seed = barrier.seed;
+
+    for(uint8_t j=0; j<16; j++)
+    {
+
+        // check if something left or right of center is coliding
+        if((collision_left <= end_x && field_ball_bottom_current.x >= end_x) ||
+            (collision_right >= start_x && field_ball_bottom_current.x <= start_x))
+        {
+            // only break loop if coliding
+            if((seed & 0x1) > 0)
+            {
+                field_ball_bottom_current.y=barrier.glcd_position-1;
+                field_ball_center_current.y=barrier.glcd_position-FIELD_BALL_RADIUS-1;
+                return 0xFF;
+            }
+        }
+        //check if center is coliding
+        else if(field_ball_bottom_current.x >= start_x && field_ball_bottom_current.x <= end_x)
+        {
+            if((seed & 0x1) > 0)
+            {
+                field_ball_bottom_current.y=barrier.glcd_position-1;
+                field_ball_center_current.y=barrier.glcd_position-FIELD_BALL_RADIUS-1;
+                return 0xFF;
+            }
+        }
+
+        start_x += FIELD_BARRIER_BLOCK_WIDTH;
+        end_x += FIELD_BARRIER_BLOCK_WIDTH;
+        seed = (seed >> 1);
+    }
+    return 0x00;
+}
+
+uint8_t field_check_side_collision(uint8_t collision_left, uint8_t collision_right, field_barrier barrier)
+{
+    uint16_t seed = barrier.seed;
+    uint8_t start_x=0, end_x=FIELD_BARRIER_BLOCK_WIDTH-1;
+
+    for(uint8_t j=0; j<16; j++)
+    {
+        // check if something is on the left side of the ball
+        if(collision_right > end_x && collision_right < end_x + FIELD_BARRIER_BLOCK_WIDTH
+           // check if current block is a hole and if the right block is a barrier
+           && ((seed >> j) & 0x1) == 0 && ((seed >> (j+1) )& 0x1) == 1) //
+        {
+            field_ball_bottom_current.x = end_x - FIELD_BALL_RADIUS;
+            field_ball_center_current.x = end_x - FIELD_BALL_RADIUS;
+            return 0xFF;
+        }
+        else if(collision_left < start_x && collision_left > start_x - FIELD_BARRIER_BLOCK_WIDTH
+                // check if current block is a hole and if the left block is a barrier
+                && ((seed >> j) & 0x1) == 0 && ((seed >> (j-1)) & 0x1) == 1) //
+        {
+            field_ball_bottom_current.x = start_x + FIELD_BALL_RADIUS;
+            field_ball_center_current.x = start_x + FIELD_BALL_RADIUS;
+            return 0xFF;
+        }
+
+        start_x += FIELD_BARRIER_BLOCK_WIDTH;
+        end_x += FIELD_BARRIER_BLOCK_WIDTH;
+    }
+
+    return 0x00;
+}
+
+void filed_add_deviation(int8_t deviation)
+{
+    if(deviation >0)
+    {
+
+        uint8_t new_pos = field_ball_bottom_current.x + abs(deviation);
+
+        if(new_pos >= FIELD_GLCD_WIDTH)
+        {
+            field_ball_bottom_current.x = FIELD_GLCD_WIDTH-FIELD_BALL_RADIUS-2;
+            field_ball_center_current.x = FIELD_GLCD_WIDTH-FIELD_BALL_RADIUS-2;
+        }
+        else
+        {
+            field_ball_bottom_current.x += deviation;
+            field_ball_center_current.x += deviation;
+        }
+    }
+    else if(deviation < 0)
+    {
+        int8_t new_pos = field_ball_bottom_current.x + deviation;
+
+        if(new_pos <= FIELD_BALL_RADIUS)
+        {
+            field_ball_bottom_current.x = FIELD_BALL_RADIUS+1;
+            field_ball_center_current.x = FIELD_BALL_RADIUS+1;
+        }
+        else
+        {
+            field_ball_bottom_current.x += deviation;
+            field_ball_center_current.x += deviation;
+        }
+    }
+}
 
 void field_draw_barrier(field_barrier barrier, uint8_t y_shift)
 {
