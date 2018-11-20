@@ -192,7 +192,6 @@ void sound_start_playing_theme(void)
     current_address = start_address = THEME_ADDRESS;
     end_address = THEME_ADDRESS + THEME_LENGTH;
     buffer_state = BUFFER_EMPTY;
-    // sound_read_data();
 }
 
 void sound_play_game_over(void)
@@ -200,5 +199,4 @@ void sound_play_game_over(void)
     current_address = start_address = GAME_OVER_SOUND_ADDRESS;
     end_address = GAME_OVER_SOUND_ADDRESS + GAME_OVER_SOUND_LENGH;
     buffer_state = BUFFER_EMPTY;
-    // sound_read_data();
 }
