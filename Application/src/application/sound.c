@@ -122,11 +122,10 @@ void sound_add_volume_val(uint8_t sound_input)
 
 void sound_set_volume(void)
 {
-    PORTH ^= (1 << PORTH2);
     if(mp3Busy() == false && sound_volume_changed)
     {
         sound_volume_changed = 0x00;
-        PORTH ^= (1 << PORTH3);
+
         uint16_t calc_volume = 0xFF;
 
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
@@ -144,11 +143,7 @@ void sound_set_volume(void)
 
         mp3SetVolume(calc_volume);
 
-        PORTH ^= (1 << PORTH3);
     }
-
-    PORTH ^= (1 << PORTH2);
-
 }
 
 void sound_read_data()
