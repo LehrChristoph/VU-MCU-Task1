@@ -58,6 +58,7 @@ void game_start_adc(void)
 
 void game_ADC_callback(uint16_t adc_val)
 {
+    // init LFSR
     if( current_adc_mode == ADC_MODE_INIT_LFSR)
     {
         current_adc_mode = ADC_MODE_NEXT_VOLUME;
@@ -161,12 +162,13 @@ void game_set_state(game_state_t new_game_state)
 
 void game_name_finished_callback(void)
 {
-
+    // deactivate callbacks
     controls_clear_button_press_callback(CONTROLS_BUTTON_D_UP);
     controls_clear_button_press_callback(CONTROLS_BUTTON_D_DOWN);
     controls_clear_button_press_callback(CONTROLS_BUTTON_D_LEFT);
     controls_clear_button_press_callback(CONTROLS_BUTTON_D_RIGHT);
     controls_set_button_press_callback(CONTROLS_BUTTON_A, game_button_callback);
+    // store player name
     ScoreBoard_store_player_name();
     game_set_state(GAME_DISPLAY_SB);
 }
