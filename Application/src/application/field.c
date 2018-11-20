@@ -92,7 +92,7 @@ void field_init(void)
 
     field_reset_field();
 
-    field_cyclic_task_id =  Tasker_add_task(0x01, field_cyclic_task, 5);
+    field_cyclic_task_id =  Tasker_add_task(0x01, field_cyclic_task, 1);
 }
 
 void field_reset_field(void)
