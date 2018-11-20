@@ -11,20 +11,21 @@
 #include <avr/io.h>
 #include "game.h"
 
-#ifndef FIELD_BARRIER_INTERVAL
-    #define FIELD_BARRIER_INTERVAL 10
-#endif
 
 #ifndef FIELD_DEFAULT_SPEED
-    #define FIELD_DEFAULT_SPEED 10
+    #define FIELD_DEFAULT_SPEED 15
 #endif
 
 #ifndef FIELD_BALL_RADIUS
-    #define FIELD_BALL_RADIUS 3
+    #define FIELD_BALL_RADIUS 2
 #endif
 
 #ifndef FIELD_GLCD_HEIGTH
     #define FIELD_GLCD_HEIGTH 64
+#endif
+
+#ifndef FIELD_GLCD_WIDTH
+    #define FIELD_GLCD_WIDTH 128
 #endif
 
 #ifndef FIELD_STRING_POSITION_Y
@@ -39,6 +40,14 @@
     #define FIELD_GAME_OVER_STRING_POSITION_X 13
 #endif
 
+#ifndef FIELD_NEW_CORE_POSITION_X
+    #define FIELD_NEW_CORE_POSITION_X 5
+#endif
+
+#ifndef FIELD_BARRIER_INTERVAL
+    #define FIELD_BARRIER_INTERVAL 10
+#endif
+
 #ifndef FIELD_BARRIER_ARRAY_SIZE
     #define FIELD_BARRIER_ARRAY_SIZE 8
 #endif
@@ -48,7 +57,7 @@
 #endif
 
 #ifndef FIELD_BALL_INIT_POSITION
-    #define FIELD_BALL_INIT_POSITION 64
+    #define FIELD_BALL_INIT_POSITION FIELD_GLCD_WIDTH/2
 #endif
 
 #define ERROR_WII_INIT      1

@@ -17,9 +17,11 @@
 #include "application/field.h"
 #include "application/sound.h"
 #include "application/controls.h"
+#include "application/ScoreBoard.h"
 
 void game_controls_connect_callback(void);
 void game_button_callback(void);
+void game_name_finished_callback(void);
 
 adc_mode_t current_adc_mode = ADC_MODE_INIT_LFSR;
 
@@ -146,7 +148,27 @@ void game_set_state(game_state_t new_game_state)
             break;
         case GAME_OVER:
             sound_play_game_over();
-            controls_set_button_press_callback(CONTROLS_BUTTON_A, game_button_callback);
+            break;
+        case GAME_GET_PLAYER:
+            controls_set_button_press_callback(CONTROLS_BUTTON_D_UP, ScoreBoard_priv_char_for_name);
+            controls_set_button_press_callback(CONTROLS_BUTTON_D_DOWN, ScoreBoard_next_char_for_name);
+            controls_set_button_press_callback(CONTROLS_BUTTON_D_LEFT, ScoreBoard_priv_char_in_list);
+            controls_set_button_press_callback(CONTROLS_BUTTON_D_RIGHT, ScoreBoard_next_char_in_list);
+            controls_set_button_press_callback(CONTROLS_BUTTON_A, game_name_finished_callback);
+            break;
+        case GAME_DISPLAY_SB:
             break;
     }
+}
+
+void game_name_finished_callback(void)
+{
+
+    controls_clear_button_press_callback(CONTROLS_BUTTON_D_UP);
+    controls_clear_button_press_callback(CONTROLS_BUTTON_D_DOWN);
+    controls_clear_button_press_callback(CONTROLS_BUTTON_D_LEFT);
+    controls_clear_button_press_callback(CONTROLS_BUTTON_D_RIGHT);
+    controls_set_button_press_callback(CONTROLS_BUTTON_A, game_button_callback);
+    ScoreBoard_store_player_name();
+    game_set_state(GAME_DISPLAY_SB);
 }
