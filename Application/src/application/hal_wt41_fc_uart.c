@@ -11,7 +11,6 @@
 #include <avr/interrupt.h>
 #include <stdint.h>
 #include <util/atomic.h>
-#include <util/delay.h>
 
 #include "USART3.h"
 #include "Timer1.h"
@@ -31,7 +30,6 @@ volatile uint8_t wt41_read_index;
 volatile uint8_t wt41_write_index;
 volatile uint8_t wt41_receive_buffer[HAL_WT41_BUFFER_SIZE];
 volatile uint8_t wt41_buffer_space;
-volatile uint8_t recv_counter=0;
 volatile uint8_t recv_flag ;
 
 error_t halWT41FcUartInit(void (*sndCallback)(), void (*rcvCallback)(uint8_t))
