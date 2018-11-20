@@ -11,7 +11,6 @@
 #include <avr/interrupt.h>
 #include <stdint.h>
 #include <util/atomic.h>
-#include <util/delay.h>
 
 #include "USART3.h"
 #include "Timer1.h"
@@ -31,7 +30,6 @@ volatile uint8_t wt41_read_index;
 volatile uint8_t wt41_write_index;
 volatile uint8_t wt41_receive_buffer[HAL_WT41_BUFFER_SIZE];
 volatile uint8_t wt41_buffer_space;
-volatile uint8_t recv_counter=0;
 volatile uint8_t recv_flag ;
 
 error_t halWT41FcUartInit(void (*sndCallback)(), void (*rcvCallback)(uint8_t))
@@ -73,8 +71,6 @@ void halWT41FcUart_timer_callback(void)
 
 error_t halWT41FcUartSend(uint8_t byte)
 {
-    static uint8_t send_counter=0;
-
     if(USART3_write_byte(byte) > 0 )
     {
         return ERROR;
@@ -101,12 +97,11 @@ void halWT41FcUart_Receive(uint8_t byte)
         USART3_set_flow_control();
     }
 
-    sei();
-
     if(recv_flag)
     {
         return;
     }
+
 
     recv_flag = 0xFF;
 
@@ -123,7 +118,9 @@ void halWT41FcUart_Receive(uint8_t byte)
         }
 
         uint8_t temp = wt41_receive_buffer[wt41_read_index];
+        sei();
         (*halWT41_receive_callback)(temp);
+        cli();
 
         if(wt41_read_index +1 >=HAL_WT41_BUFFER_SIZE)
         {
@@ -138,6 +135,7 @@ void halWT41FcUart_Receive(uint8_t byte)
     }
 
     recv_flag = 0x00;
+    sei();
 }
 
 uint8_t halWT41FcUart_get_free_buffer_space(void)

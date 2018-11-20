@@ -12,7 +12,7 @@
 #include "PinChangeInterrupts.h"
 
 #ifndef USART3_BUFFER_SIZE
-    #define USART3_BUFFER_SIZE 256
+    #define USART3_BUFFER_SIZE 48
 #endif
 
 #if USART3_BUFFER_SIZE > 0xFFFF

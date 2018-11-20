@@ -10,12 +10,16 @@
 #include <avr/io.h>
 #include <avr/pgmspace.h>
 #include <util/atomic.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #include "glcd.h"
 #include "Standard5x7.h"
 #include "game.h"
 #include "modules/Tasker.h"
 #include "modules/rand.h"
+#include "ScoreBoard.h"
+#include "controls.h"
 
 // functions definitions
 void field_cyclic_task(void);
@@ -26,6 +30,8 @@ void field_update_positions(void);
 void field_update_ball_position(uint8_t y_shift);
 void field_draw_barrier(field_barrier barrier, uint8_t y_shift);
 void field_update_glcd(void);
+void field_display_new_game(void);
+void field_display_SB(void);
 
 static uint8_t field_cyclic_task_id = 0xFF;
 
@@ -40,9 +46,31 @@ static xy_point field_ball_bottom_current;
 static uint16_t game_speed = FIELD_DEFAULT_SPEED;
 
 static uint8_t already_displayed = 0x00;
+static uint8_t connect_infor_already_displayed = 0x00;
 
 const char startup_message[] PROGMEM = "FALLING DOWN BALL";
 const char game_over_message[] PROGMEM = "GAME OVER";
+const char connect_message[] PROGMEM = "CONNECTING TO:";
+const char mac_address_format[] PROGMEM = "%02X:%02X:%02X:%02X:%02X:%02X";
+const char ready_to_start_message[] PROGMEM = "Ready to Start";
+const char press_a_message[] PROGMEM = "New Game: Press A";
+const char new_score[] PROGMEM = "NEW SCORE ENTRY";
+
+static uint16_t current_score;
+static uint8_t score_position;
+
+const char wiimote_init_error[] PROGMEM = "WiiUserInit Error";
+const char wiimote_connect_error[] PROGMEM = "WiiUserConnect Error";
+const char wiimote_setLeds_error[] PROGMEM = "WiiUserSetLeds Error";
+const char wiimote_setAccl_error[] PROGMEM = "WiiUserSetAccl Error";
+
+// const PGM_P error_table[4] PROGMEM =
+// {
+//     wiimote_init_error,
+//     wiimote_connect_error,
+//     wiimote_setLeds_error,
+//     wiimote_setAccl_error
+// };
 
 void field_init(void)
 {
@@ -51,19 +79,32 @@ void field_init(void)
 
     field_current_game_state = GAME_IDLE;
 
-    field_ball_center_current.x = 63;
+    field_reset_field();
+
+    field_cyclic_task_id =  Tasker_add_task(0x01, field_cyclic_task, 5);
+}
+
+void field_reset_field(void)
+{
+    field_ball_center_current.x = FIELD_BALL_INIT_POSITION;
     field_ball_center_current.y = FIELD_GLCD_HEIGTH - FIELD_BALL_RADIUS -2;
-    field_ball_bottom_current.x = 63;
+    field_ball_bottom_current.x = FIELD_BALL_INIT_POSITION;
     field_ball_bottom_current.y = FIELD_GLCD_HEIGTH -2;
 
+    current_score = 0;
+    score_position = 0;
+
+    already_displayed = 0x00;
+    game_speed = FIELD_DEFAULT_SPEED;
+    field_current_game_state = GAME_IDLE;
+    connect_infor_already_displayed = 0x00;
+
     field_barrier_index=0;
-    for(uint8_t i=0; i<8; i++)
+    for(uint8_t i=0; i<FIELD_BARRIER_ARRAY_SIZE; i++)
     {
         field_barriers_current[field_barrier_index].glcd_position = FIELD_GLCD_HEIGTH-1;
         field_barriers_current[field_barrier_index].seed = 0xFF;
     }
-
-    field_cyclic_task_id =  Tasker_add_task(0x01, field_cyclic_task, 10);
 }
 
 void field_updated_local_game_state(game_state_t new_game_state)
@@ -95,6 +136,11 @@ void field_cyclic_task(void)
         case GAME_OVER:
             field_display_end();
             break;
+        case GAME_GET_PLAYER:
+            break;
+        case GAME_DISPLAY_SB:
+            field_display_SB();
+            break;
     }
 }
 
@@ -102,11 +148,13 @@ void field_display_start_screen(void)
 {
     if(! already_displayed)
     {
+        current_score = 0;
+
         xy_point message_point ;
-        message_point.x = 13;
-        message_point.y = 32;
-        glcdFillScreen(GLCD_CLEAR);
+        message_point.x = FIELD_TITLE_STRING_POSITION_X;
+        message_point.y = FIELD_STRING_POSITION_Y;
         glcdDrawTextPgm(startup_message, message_point, &Standard5x7, glcdSetPixel);
+
         already_displayed = 0xFF;
     }
 }
@@ -118,31 +166,118 @@ void field_display_game(void)
 
 void field_display_end(void)
 {
-    if(! already_displayed)
+
+    glcdSetYShift(0);
+    glcdFillScreen(GLCD_CLEAR);
+
+    score_position = ScoreBoard_new_score(current_score);
+    if(score_position >0 )
     {
         xy_point message_point ;
-        message_point.x = 35;
-        message_point.y = 32;
-        glcdFillScreen(GLCD_CLEAR);
+        message_point.x = FIELD_NEW_CORE_POSITION_X;
+        message_point.y = FIELD_STRING_POSITION_Y;
+
+        glcdDrawTextPgm(new_score, message_point, &Standard5x7, glcdSetPixel);
+        game_set_state(GAME_GET_PLAYER);
+    }
+    else
+    {
+        xy_point message_point ;
+        message_point.x = FIELD_GAME_OVER_STRING_POSITION_X;
+        message_point.y = FIELD_STRING_POSITION_Y;
         glcdDrawTextPgm(game_over_message, message_point, &Standard5x7, glcdSetPixel);
-        already_displayed = 0xFF;
+        game_set_state(GAME_DISPLAY_SB);
     }
 
+    current_score = 0x00;
+
+}
+
+void field_display_SB(void)
+{
+    if(! already_displayed)
+    {
+        ScoreBoard_display(score_position);
+
+        field_display_new_game();
+
+        already_displayed = 0xFF;
+    }
+}
+
+void field_display_connect(uint8_t *mac_address)
+{
+    xy_point message_clear_point_1 ;
+    message_clear_point_1.x = 0;
+    message_clear_point_1.y = 10;
+
+    xy_point message_clear_point_2 ;
+    message_clear_point_2.x = 127;
+    message_clear_point_2.y = 40;
+
+    glcdFillRect(message_clear_point_1, message_clear_point_2, glcdClearPixel);
+
+    xy_point message_point ;
+    message_point.x = 5;
+    message_point.y = 20;
+    glcdDrawTextPgm(connect_message, message_point, &Standard5x7, glcdSetPixel);
+    connect_infor_already_displayed = 0xFF;
+
+    char mac_output[18];
+    char format[30];
+
+    strcpy_P(format, mac_address_format);
+    sprintf(mac_output, format,
+            (&mac_address)[0][0],
+            (&mac_address)[0][1],
+            (&mac_address)[0][2],
+            (&mac_address)[0][3],
+            (&mac_address)[0][4],
+            (&mac_address)[0][5]);
+
+    xy_point mac_address_point ;
+    mac_address_point.x = 5;
+    mac_address_point.y = 28;
+    glcdDrawText(mac_output, mac_address_point, &Standard5x7, glcdSetPixel);
+}
+
+void field_display_ready_to_start(void)
+{
+
+    xy_point message_point ;
+    message_point.x = 20;
+    message_point.y = 50;
+    glcdDrawTextPgm(ready_to_start_message, message_point, &Standard5x7, glcdSetPixel);
+    field_display_new_game();
+}
+
+void field_display_new_game(void)
+{
+    xy_point message_point ;
+    message_point.x = 12;
+    message_point.y = 63;
+    glcdDrawTextPgm(press_a_message, message_point, &Standard5x7, glcdSetPixel);
+}
+
+void field_display_error(uint8_t error_code)
+{
+    PORTK = error_code;
 }
 
 void field_update_positions(void)
 {
     static uint16_t game_counter = 0;
     static uint8_t line_counter =0;
-
+    static uint8_t speed_counter =0;
     if(game_counter == 0)
     {
+        current_score++;
         uint8_t y_shift = glcdGetYShift();
         glcdSetYShift(y_shift +1);
         glcdDrawHorizontal(y_shift, glcdClearPixel);
 
         //apply y_shift
-        for(uint8_t i=0; i<8; i++)
+        for(uint8_t i=0; i<FIELD_BARRIER_ARRAY_SIZE; i++)
         {
             field_barriers_current[i].glcd_position--;
         }
@@ -154,6 +289,12 @@ void field_update_positions(void)
             field_draw_barrier(field_barriers_current[field_barrier_index], y_shift);
 
             field_barrier_index = (field_barrier_index+1)%8;
+
+            if( speed_counter >= FIELD_SPEED_INCREASE_INTERVAL && game_speed > FIELD_MIN_SPEED)
+            {
+                game_speed--;
+            }
+            speed_counter++;
         }
 
         field_update_ball_position(y_shift);
@@ -172,42 +313,74 @@ void field_update_positions(void)
 
 void field_update_ball_position(uint8_t y_shift)
 {
-    uint8_t blocked = 0x00;
+    uint8_t y_blocked = 0x00, x_blocked = 0x00;
 
     xy_point draw_point = field_ball_center_current;
-    draw_point.y += y_shift-1;
+    draw_point.y += y_shift;
 
     glcdDrawCircle(draw_point, FIELD_BALL_RADIUS, glcdClearPixel);
+    int8_t deviation = controls_get_deviation();
 
-    for(uint8_t i=0; i<8; i++)
+    uint8_t start_x=0, end_x=FIELD_BARRIER_BLOCK_WIDTH-1;
+
+    uint8_t collision_left = field_ball_bottom_current.x;
+    uint8_t collision_right = field_ball_bottom_current.x;
+
+    if(collision_left < FIELD_BALL_RADIUS)
+    {
+        collision_left = 0;
+    }
+    else
+    {
+        collision_left -= FIELD_BALL_RADIUS;
+    }
+
+    if(collision_right + FIELD_BALL_RADIUS >= FIELD_GLCD_WIDTH)
+    {
+        collision_right = FIELD_GLCD_WIDTH-1;
+    }
+    else
+    {
+        collision_right += FIELD_BALL_RADIUS;
+    }
+
+    if(deviation > 0)
     {
 
+        if(collision_right + abs(deviation) >= FIELD_GLCD_WIDTH-1)
+        {
+            collision_right=FIELD_GLCD_WIDTH-1;
+            collision_left =FIELD_GLCD_WIDTH-(2*FIELD_BALL_RADIUS + 1) -1;
+        }
+        else
+        {
+            collision_left+=deviation;
+            collision_right+=deviation;
+        }
+    }
+    else if(deviation < 0)
+    {
+        if(collision_left < abs(deviation))
+        {
+            collision_left = 0;
+            collision_right =2*FIELD_BALL_RADIUS + 1;
+        }
+        else
+        {
+            collision_left+=deviation;
+            collision_right+=deviation;
+        }
+    }
+
+
+    for(uint8_t i=0; i<FIELD_BARRIER_ARRAY_SIZE; i++)
+    {
+
+        // check if ball drops on barrier
         if(field_barriers_current[i].glcd_position-1 == field_ball_bottom_current.y ||
            field_barriers_current[i].glcd_position   == field_ball_bottom_current.y)
         {
-            uint8_t start_x=0, end_x=7;
             uint16_t seed = field_barriers_current[i].seed;
-
-            uint8_t collision_left = field_ball_bottom_current.x;
-            uint8_t collision_right = field_ball_bottom_current.x;
-
-            if(collision_left < FIELD_BALL_RADIUS)
-            {
-                collision_left = 0;
-            }
-            else
-            {
-                collision_left -= FIELD_BALL_RADIUS;
-            }
-
-            if(collision_right + FIELD_BALL_RADIUS > 127)
-            {
-                collision_left = 127;
-            }
-            else
-            {
-                collision_right += FIELD_BALL_RADIUS;
-            }
 
             for(uint8_t j=0; j<16; j++)
             {
@@ -219,7 +392,7 @@ void field_update_ball_position(uint8_t y_shift)
                     // only break loop if coliding
                     if((seed & 0x1) > 0)
                     {
-                        blocked = 0xFF;
+                        y_blocked = 0xFF;
                         field_ball_bottom_current.y=field_barriers_current[i].glcd_position-1;
                         field_ball_center_current.y=field_barriers_current[i].glcd_position-FIELD_BALL_RADIUS-1;
                         break;
@@ -230,23 +403,94 @@ void field_update_ball_position(uint8_t y_shift)
                 {
                     if((seed & 0x1) > 0)
                     {
-                        blocked = 0xFF;
+                        y_blocked = 0xFF;
                         field_ball_bottom_current.y=field_barriers_current[i].glcd_position-1;
                         field_ball_center_current.y=field_barriers_current[i].glcd_position-FIELD_BALL_RADIUS-1;
                     }
                     break;
                 }
 
-                start_x += 8;
-                end_x += 8;
+                start_x += FIELD_BARRIER_BLOCK_WIDTH;
+                end_x += FIELD_BARRIER_BLOCK_WIDTH;
                 seed = (seed >> 1);
             }
+        }
+        // check if colision is left or right
+        if(field_ball_center_current.y - FIELD_BALL_RADIUS <= field_barriers_current[i].glcd_position &&
+           field_ball_center_current.y + FIELD_BALL_RADIUS >= field_barriers_current[i].glcd_position)
+        {
+            uint16_t seed = field_barriers_current[i].seed;
 
+            for(uint8_t j=0; j<16; j++)
+            {
+                // check if something is on the left side of the ball
+                if(collision_right > end_x && collision_right < end_x + FIELD_BARRIER_BLOCK_WIDTH
+                   // check if current block is a hole and if the right block is a barrier
+                   && ((seed >> i) & 0x1) == 0 && ((seed >> (j+1) )& 0x1) == 1) //
+                {
+                    field_ball_bottom_current.x = end_x - FIELD_BALL_RADIUS;
+                    field_ball_center_current.x = end_x - FIELD_BALL_RADIUS;
+                    x_blocked = 0xFF;
+
+                    break;
+                }
+                else if(collision_left < start_x && collision_left > start_x - FIELD_BARRIER_BLOCK_WIDTH
+                        // check if current block is a hole and if the left block is a barrier
+                        && ((seed >> i) & 0x1) == 0 && ((seed >> (j-1)) & 0x1) == 1) //
+                {
+                    field_ball_bottom_current.x = start_x + FIELD_BALL_RADIUS;
+                    field_ball_center_current.x = start_x + FIELD_BALL_RADIUS;
+                    x_blocked = 0xFF;
+                    break;
+                }
+
+                start_x += FIELD_BARRIER_BLOCK_WIDTH;
+                end_x += FIELD_BARRIER_BLOCK_WIDTH;
+            }
+        }
+        if (x_blocked || y_blocked)
+        {
             break;
         }
     }
 
-    if(!blocked && field_ball_bottom_current.y < FIELD_GLCD_HEIGTH -2 )
+    if(! x_blocked)
+    {
+        if(deviation >0)
+        {
+
+            uint8_t new_pos = field_ball_bottom_current.x + abs(deviation);
+            PORTL = new_pos;
+
+            if(new_pos >= FIELD_GLCD_WIDTH)
+            {
+                field_ball_bottom_current.x = FIELD_GLCD_WIDTH-FIELD_BALL_RADIUS-2;
+                field_ball_center_current.x = FIELD_GLCD_WIDTH-FIELD_BALL_RADIUS-2;
+            }
+            else
+            {
+                field_ball_bottom_current.x += deviation;
+                field_ball_center_current.x += deviation;
+            }
+        }
+        else if(deviation < 0)
+        {
+            int8_t new_pos = field_ball_bottom_current.x + deviation;
+            PORTK = abs(new_pos);
+            if(new_pos <= FIELD_BALL_RADIUS)
+            {
+                field_ball_bottom_current.x = FIELD_BALL_RADIUS+1;
+                field_ball_center_current.x = FIELD_BALL_RADIUS+1;
+            }
+            else
+            {
+                field_ball_bottom_current.x += deviation;
+                field_ball_center_current.x += deviation;
+            }
+        }
+    }
+
+    if(!y_blocked && field_ball_bottom_current.y < FIELD_GLCD_HEIGTH -2 )
     {
         field_ball_bottom_current.y+=1;
         field_ball_center_current.y+=1;
@@ -270,7 +514,7 @@ void field_draw_barrier(field_barrier barrier, uint8_t y_shift)
 
     xy_point start_p, end_p;
     start_p.x = 0;
-    end_p.x = 7;
+    end_p.x = FIELD_BARRIER_BLOCK_WIDTH-1;
     start_p.y = end_p.y = y_shift;
 
     for(uint8_t i=0; i<16; i++)
@@ -281,7 +525,7 @@ void field_draw_barrier(field_barrier barrier, uint8_t y_shift)
         }
 
         seed = (seed >> 1);
-        start_p.x += 8;
-        end_p.x += 8;
+        start_p.x += FIELD_BARRIER_BLOCK_WIDTH;
+        end_p.x += FIELD_BARRIER_BLOCK_WIDTH;
     }
 }

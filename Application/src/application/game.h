@@ -23,6 +23,8 @@ typedef enum {
 	GAME_STARTUP	= 1,
 	GAME_PLAYING	= 2,
     GAME_OVER       = 3,
+    GAME_GET_PLAYER = 4,
+    GAME_DISPLAY_SB = 5,
 } game_state_t;
 
 

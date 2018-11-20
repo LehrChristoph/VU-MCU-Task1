@@ -29,14 +29,15 @@ void spiSend(uint8_t data)
     SPCR |=  (1 << MSTR );
     // wait until transfer is completed
     while((SPSR & (1<<SPIF)) == 0);
-
 }
 
 uint8_t spiReceive(void)
 {
+
     // send dummy byte
     SPDR = 0xFF;
     // wait until transfer is completed
+
     while(!(SPSR & (1<<SPIF) ));
     // return received data
     return SPDR;
@@ -49,6 +50,11 @@ void spiSetPrescaler(spi_prescaler_t prescaler)
     {
         case SPI_PRESCALER_128:
             SPCR |=  (1 << SPR1 | 1 << SPR0);
+            SPSR &= ~(1 << SPI2X);
+            break;
+        case SPI_PRESCALER_16:
+            SPCR |=  (1 << SPR0);
+            SPCR &= ~(1 << SPR1);
             SPSR &= ~(1 << SPI2X);
             break;
     	case SPI_PRESCALER_4:
