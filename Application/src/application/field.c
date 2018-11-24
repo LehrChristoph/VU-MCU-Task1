@@ -57,6 +57,7 @@ const char mac_address_format[] PROGMEM = "%02X:%02X:%02X:%02X:%02X:%02X";
 const char ready_to_start_message[] PROGMEM = "Ready to Start";
 const char press_a_message[] PROGMEM = "New Game: Press A";
 const char new_score_message[] PROGMEM = "NEW SCORE ENTRY";
+const char restart_board_message[] PROGMEM = "RESET OF BOARD NEEDED!";
 
 static uint16_t current_score;
 static uint8_t score_position;
@@ -269,15 +270,20 @@ void field_display_new_game(void)
 
 void field_display_error(uint8_t error_code)
 {
+
     glcdFillScreen(GLCD_CLEAR);
-    
+
     xy_point message_point ;
     message_point.x = 2;
     message_point.y = 30;
 
     glcdDrawTextPgm((char*)pgm_read_word(&(error_table[error_code])), message_point, &Standard5x7, glcdSetPixel);
 
+    message_point.y += 10;
+
+    glcdDrawTextPgm(restart_board_message, message_point, &Standard5x7, glcdSetPixel);
     game_set_state(GAME_ERROR);
+
 }
 
 void field_update_positions(void)
