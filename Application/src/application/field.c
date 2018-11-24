@@ -56,7 +56,7 @@ const char connect_message[] PROGMEM = "CONNECTING TO:";
 const char mac_address_format[] PROGMEM = "%02X:%02X:%02X:%02X:%02X:%02X";
 const char ready_to_start_message[] PROGMEM = "Ready to Start";
 const char press_a_message[] PROGMEM = "New Game: Press A";
-const char new_score[] PROGMEM = "NEW SCORE ENTRY";
+const char new_score_message[] PROGMEM = "NEW SCORE ENTRY";
 
 static uint16_t current_score;
 static uint8_t score_position;
@@ -185,7 +185,7 @@ void field_display_end(void)
         message_point.x = FIELD_NEW_CORE_POSITION_X;
         message_point.y = FIELD_STRING_POSITION_Y;
 
-        glcdDrawTextPgm(new_score, message_point, &Standard5x7, glcdSetPixel);
+        glcdDrawTextPgm(new_score_message, message_point, &Standard5x7, glcdSetPixel);
         game_set_state(GAME_GET_PLAYER);
     }
     else
