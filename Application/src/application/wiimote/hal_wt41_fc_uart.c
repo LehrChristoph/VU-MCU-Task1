@@ -13,7 +13,6 @@
 #include <util/atomic.h>
 
 #include "USART3.h"
-#include "Timer1.h"
 #include "modules/Tasker.h"
 
 // Functions declarations
@@ -67,7 +66,6 @@ void halWT41FcUart_timer_callback(void)
     USART3_enable_transmitter(halWT41_send_callback);
     USART3_clear_flow_control();
     PORTJ |= (1 << PORTJ5);
-    timer1_disable_output_compare_interrupt_A();
 }
 
 error_t halWT41FcUartSend(uint8_t byte)
