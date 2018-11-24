@@ -9,6 +9,7 @@
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
+#include <avr/sleep.h>
 
 #include "basics/ADC.h"
 #include "modules/rand.h"
@@ -34,6 +35,7 @@ static uint8_t accl_setup = 0x00;
 void game_init(void)
 {
     game_state = GAME_IDLE;
+
     field_init();
     sound_init();
     controls_init();
@@ -159,7 +161,12 @@ void game_set_state(game_state_t new_game_state)
             break;
         case GAME_ERROR:
             // error occured block here
-            while(1);
+            // Checked with Prof. Schwarz, ok for Error state
+            while(1)
+            {
+                cli();
+                sleep_cpu();
+            }
             break;
     }
 }
