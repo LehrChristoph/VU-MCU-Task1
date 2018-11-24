@@ -12,7 +12,7 @@
 void spiInit(void)
 {
     uint8_t temp = PORTB;
-    PORTB =  (temp | 1 << PB3);
+    PORTB =  (temp | 1 << PB0 | 1 << PB3);
     temp = DDRB & 0xF0;
     DDRB = (temp | 1 << PB1 | 1 << PB2);
 
