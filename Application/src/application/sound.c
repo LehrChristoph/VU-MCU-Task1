@@ -13,7 +13,7 @@
 #include <util/atomic.h>
 
 #include "modules/Tasker.h"
-
+#include "application/field.h"
 #include "application/mp3.h"
 #include "application/spi.h"
 #include "application/sdcard.h"
@@ -57,7 +57,23 @@ void sound_init(void)
 
     if(error_code != SUCCESS)
     {
-        // TODO: handle errors
+
+        if(error_code == E_TIMEOUT)
+        {
+            field_display_error(ERROR_SD_TIMEOUT);
+        }
+        else if(error_code == E_NOCARD)
+        {
+            field_display_error(ERROR_NO_CARD);
+        }
+        else if(error_code == E_UNKNOWN_CARD)
+        {
+            field_display_error(ERROR_UNKNOWN_CARD);
+        }
+        else
+        {
+            field_display_error(ERROR_SD_GENERAL);
+        }
     }
 
     mp3Init(&sound_mp3_callback);
@@ -154,8 +170,29 @@ void sound_read_data()
         return;
     }
 
-    // TODO handle error
     error_t error_code = sdcardReadBlock(current_address, sound_buffer);
+
+    if(error_code != SUCCESS)
+    {
+
+        if(error_code == E_TIMEOUT)
+        {
+            field_display_error(ERROR_SD_TIMEOUT);
+        }
+        else if(error_code == E_NOCARD)
+        {
+            field_display_error(ERROR_NO_CARD);
+        }
+        else if(error_code == E_UNKNOWN_CARD)
+        {
+            field_display_error(ERROR_UNKNOWN_CARD);
+        }
+        else
+        {
+            field_display_error(ERROR_SD_GENERAL);
+        }
+    }
+
     current_address+=32;
 
     if( current_address >= end_address)

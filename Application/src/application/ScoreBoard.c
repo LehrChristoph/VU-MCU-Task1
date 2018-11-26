@@ -45,22 +45,32 @@ uint8_t ScoreBoard_new_score(uint16_t score)
         ScoreBoard_init_new_player();
 
         //find position where
-        for(uint8_t i=SCORE_BOARD_SIZE-2; i >0 ; i--)
+        for(int8_t i=SCORE_BOARD_SIZE-1; i >0 ; i--)
         {
-            score_board[i+1].score = score_board[i].score;
-            strncpy(score_board[i+1].player, score_board[i].player,SCORE_BOARD_PLAYER_LENGTH);
+            if(i < SCORE_BOARD_SIZE-1 )
+            {
+                score_board[i+1].score = score_board[i].score;
+                strncpy(score_board[i+1].player, score_board[i].player,SCORE_BOARD_PLAYER_LENGTH);
+            }
 
-            if(score_board[i-1].score > score)
+            if(score_board[i-1].score >= score)
             {
                 score_board[i].score = score;
                 current_hs_postion=i;
+
+                score_board_min = score_board[SCORE_BOARD_SIZE-1].score;
+
                 return i+1;
             }
+
         }
         score_board[1].score = score_board[0].score;
         strncpy(score_board[1].player, score_board[0].player,SCORE_BOARD_PLAYER_LENGTH);
         score_board[0].score = score;
         current_hs_postion = 0;
+
+        score_board_min = score_board[SCORE_BOARD_SIZE-1].score;
+
         return 1;
     }
     current_hs_postion = SCORE_BOARD_SIZE;

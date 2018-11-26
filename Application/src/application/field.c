@@ -56,7 +56,8 @@ const char connect_message[] PROGMEM = "CONNECTING TO:";
 const char mac_address_format[] PROGMEM = "%02X:%02X:%02X:%02X:%02X:%02X";
 const char ready_to_start_message[] PROGMEM = "Ready to Start";
 const char press_a_message[] PROGMEM = "New Game: Press A";
-const char new_score[] PROGMEM = "NEW SCORE ENTRY";
+const char new_score_message[] PROGMEM = "NEW SCORE ENTRY";
+const char restart_board_message[] PROGMEM = "RESET OF BOARD NEEDED!";
 
 static uint16_t current_score;
 static uint8_t score_position;
@@ -66,13 +67,22 @@ const char wiimote_connect_error[] PROGMEM = "WiiUserConnect Error";
 const char wiimote_setLeds_error[] PROGMEM = "WiiUserSetLeds Error";
 const char wiimote_setAccl_error[] PROGMEM = "WiiUserSetAccl Error";
 
-// const PGM_P error_table[4] PROGMEM =
-// {
-//     wiimote_init_error,
-//     wiimote_connect_error,
-//     wiimote_setLeds_error,
-//     wiimote_setAccl_error
-// };
+const char sd_card_no_card_error[] PROGMEM = "No SD Card Error ";
+const char sd_card_timeout_error[] PROGMEM = "SD Card Timeout Error";
+const char sd_card_unknown_card_error[] PROGMEM = "Unknown SD Card Error";
+const char sd_card_general_error[] PROGMEM = "General SD Card Error";
+
+const char * const error_table[] PROGMEM =
+{
+    wiimote_init_error,
+    wiimote_connect_error,
+    wiimote_setLeds_error,
+    wiimote_setAccl_error,
+    sd_card_no_card_error,
+    sd_card_timeout_error,
+    sd_card_unknown_card_error,
+    sd_card_general_error
+};
 
 void field_init(void)
 {
@@ -83,7 +93,7 @@ void field_init(void)
 
     field_reset_field();
 
-    field_cyclic_task_id =  Tasker_add_task(0x01, field_cyclic_task, 5);
+    field_cyclic_task_id =  Tasker_add_task(0x01, field_cyclic_task, 1);
 }
 
 void field_reset_field(void)
@@ -143,6 +153,8 @@ void field_cyclic_task(void)
         case GAME_DISPLAY_SB:
             field_display_SB();
             break;
+        case GAME_ERROR:
+            break;
     }
 }
 
@@ -174,7 +186,7 @@ void field_display_end(void)
         message_point.x = FIELD_NEW_CORE_POSITION_X;
         message_point.y = FIELD_STRING_POSITION_Y;
 
-        glcdDrawTextPgm(new_score, message_point, &Standard5x7, glcdSetPixel);
+        glcdDrawTextPgm(new_score_message, message_point, &Standard5x7, glcdSetPixel);
         game_set_state(GAME_GET_PLAYER);
     }
     else
@@ -258,6 +270,19 @@ void field_display_new_game(void)
 
 void field_display_error(uint8_t error_code)
 {
+
+    glcdFillScreen(GLCD_CLEAR);
+
+    xy_point message_point ;
+    message_point.x = 2;
+    message_point.y = 30;
+
+    glcdDrawTextPgm((char*)pgm_read_word(&(error_table[error_code])), message_point, &Standard5x7, glcdSetPixel);
+
+    message_point.y += 10;
+
+    glcdDrawTextPgm(restart_board_message, message_point, &Standard5x7, glcdSetPixel);
+    game_set_state(GAME_ERROR);
 
 }
 
